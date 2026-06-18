@@ -232,6 +232,12 @@ export default {
     aiDescFailed: '生简介失败',
   },
 
+  projectEdit: {
+    title: '编辑工程',
+    wordsPerChapterLabel: '每章字数',
+    wordsPerChapterHint: '影响「生成本章」抽屉的默认目标字数,可随时调整',
+  },
+
   chapterDialog: {
     createTitle: '新建章节',
     renameTitle: '重命名章节',

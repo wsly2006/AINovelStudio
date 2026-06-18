@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
-import { ArrowLeft, Setting, Download, ArrowDown, Sunny, Moon, ChatLineRound, DataLine, Tools } from '@element-plus/icons-vue'
+import { ArrowLeft, Setting, Download, ArrowDown, Sunny, Moon, ChatLineRound, DataLine, Tools, Edit } from '@element-plus/icons-vue'
 import { useWorkspaceStore } from '../stores/workspace'
 import { useCharactersStore } from '../stores/characters'
 import { useWorldStore } from '../stores/world'
@@ -13,6 +13,7 @@ import { useAIInfoStore } from '../stores/aiInfo'
 import { useThemeStore } from '../stores/theme'
 import AIConfigDialog from '../components/AIConfigDialog.vue'
 import PromptManagerDialog from '../components/PromptManagerDialog.vue'
+import ProjectEditDialog from '../components/ProjectEditDialog.vue'
 import WorkspaceLeftNav from '../components/WorkspaceLeftNav.vue'
 
 const props = defineProps({ id: { type: String, required: true } })
@@ -29,6 +30,7 @@ const { t } = useI18n()
 const projectId = computed(() => Number(props.id))
 const aiConfigVisible = ref(false)
 const promptManagerVisible = ref(false)
+const projectEditVisible = ref(false)
 
 const isHC = computed(() => theme.current === 'high-contrast')
 const themeToggleTitle = computed(() =>
@@ -76,6 +78,13 @@ function onAIConfigSaved() {
   aiInfo.refresh()
 }
 
+function onProjectSaved(updated) {
+  // 直接把后端返回的最新对象写回 store,避免再发一次 GET
+  if (updated && store.project) {
+    store.project = { ...store.project, ...updated }
+  }
+}
+
 function onExport(kind) {
   // 直接打开下载链接,浏览器会按 Content-Disposition 保存
   const url = `/api/projects/${projectId.value}/export.${kind}`
@@ -97,6 +106,15 @@ function onSettings(cmd) {
         {{ t('workspace.backHome') }}
       </el-button>
       <h1 class="title">{{ store.project?.name || '...' }}</h1>
+      <button
+        v-if="store.project"
+        class="title-edit"
+        :title="t('projectEdit.title')"
+        :aria-label="t('projectEdit.title')"
+        @click="projectEditVisible = true"
+      >
+        <el-icon :size="16"><Edit /></el-icon>
+      </button>
       <span class="spacer" />
 
       <el-dropdown trigger="click" @command="onExport">
@@ -167,6 +185,11 @@ function onSettings(cmd) {
 
     <AIConfigDialog v-model="aiConfigVisible" @saved="onAIConfigSaved" />
     <PromptManagerDialog v-model="promptManagerVisible" />
+    <ProjectEditDialog
+      v-model="projectEditVisible"
+      :project="store.project"
+      @saved="onProjectSaved"
+    />
   </div>
 </template>
 
@@ -195,6 +218,28 @@ function onSettings(cmd) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.title-edit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid #d9ebff;
+  background: #ecf5ff;
+  color: #4080ff;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, transform 0.1s;
+}
+.title-edit:hover {
+  background: #4080ff;
+  border-color: #4080ff;
+  color: #fff;
+  transform: scale(1.05);
+}
+.title-edit:active {
+  transform: scale(0.96);
 }
 .topbar .spacer {
   flex: 1;
