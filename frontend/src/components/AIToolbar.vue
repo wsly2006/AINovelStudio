@@ -1,13 +1,13 @@
 <script setup>
 import { onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { MagicStick, Edit, EditPen, Document, Connection } from '@element-plus/icons-vue'
+import { MagicStick, Edit, EditPen, Document, Connection, StarFilled } from '@element-plus/icons-vue'
 import { useAIInfoStore } from '../stores/aiInfo'
 
 const props = defineProps({
   indexing: { type: Boolean, default: false },
 })
-const emit = defineEmits(['generate', 'continue', 'rewrite', 'summarize', 'index'])
+const emit = defineEmits(['generate', 'continue', 'rewrite', 'summarize', 'index', 'score'])
 
 const { t } = useI18n()
 const info = useAIInfoStore()
@@ -40,6 +40,9 @@ const disabled = computed(() => !info.configured)
       @click="emit('index')"
     >
       {{ t('ai.indexChapter') }}
+    </el-button>
+    <el-button :disabled="disabled" :icon="StarFilled" @click="emit('score')">
+      评分
     </el-button>
   </div>
 </template>

@@ -270,3 +270,17 @@ def build_summarize_messages(chapter: Chapter, *, db=None) -> list[dict]:
         "chapter_content": chapter.content or "",
     }
     return prompt_service.render(db, "chapter.summarize", values)
+
+
+def build_score_messages(
+    project: Project,
+    chapter: Chapter,
+    *,
+    db=None,
+) -> list[dict]:
+    values = {
+        "project_info": _project_context(project),
+        "chapter_label": _chapter_label(chapter),
+        "chapter_content": chapter.content or "",
+    }
+    return prompt_service.render(db, "chapter.score", values)

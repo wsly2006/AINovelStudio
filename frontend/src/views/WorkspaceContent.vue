@@ -12,6 +12,7 @@ import ChapterEditor from '../components/ChapterEditor.vue'
 import ChapterCreateDialog from '../components/ChapterCreateDialog.vue'
 import AIToolbar from '../components/AIToolbar.vue'
 import AIGenerateDrawer from '../components/AIGenerateDrawer.vue'
+import ChapterScoreDialog from '../components/ChapterScoreDialog.vue'
 import { formatChapterFullTitle } from '../composables/chapterTitle'
 import { indexChapter } from '../composables/indexChapter'
 import { chapterVersionsApi } from '../api/chapterVersions'
@@ -35,6 +36,9 @@ const dialogOrderIndex = ref(1)
 const dialogTitle = ref('')
 const dialogSummary = ref('')
 const dialogTargetId = ref(null)
+
+// AI 评分对话框
+const scoreVisible = ref(false)
 
 const selectedChapter = computed(
   () => store.chapters.find((c) => c.id === store.selectedId) || null
@@ -339,6 +343,12 @@ async function snapshotBeforeAI() {
   }
 }
 
+async function onAIScore() {
+  if (!selectedChapter.value) return
+  await flushEditor()
+  scoreVisible.value = true
+}
+
 async function onDrawerReplace(text) {
   await snapshotBeforeAI()
   editorRef.value?.replaceAll(text)
@@ -387,6 +397,7 @@ async function onDrawerAccept(text) {
           @rewrite="onAIRewrite"
           @summarize="onAISummarize"
           @index="onIndexChapter"
+          @score="onAIScore"
         />
       </div>
       <el-input
@@ -432,6 +443,12 @@ async function onDrawerAccept(text) {
     :title="dialogTitle"
     :summary="dialogSummary"
     @submit="onDialogSubmit"
+  />
+
+  <ChapterScoreDialog
+    v-model="scoreVisible"
+    :chapter-id="selectedChapter?.id || null"
+    :chapter-title="selectedChapterFullTitle"
   />
 </template>
 

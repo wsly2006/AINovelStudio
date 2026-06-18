@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api import (
     ai,
     analysis,
+    chapter_scores,
     chapter_versions,
     chapters,
     characters,
@@ -67,6 +68,7 @@ app.include_router(projects.router)
 app.include_router(chapters.project_router)
 app.include_router(chapters.chapter_router)
 app.include_router(chapter_versions.router)
+app.include_router(chapter_scores.router)
 app.include_router(characters.project_router)
 app.include_router(characters.character_router)
 app.include_router(analysis.relation_project_router)
