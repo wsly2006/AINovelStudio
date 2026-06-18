@@ -134,31 +134,7 @@ async function start() {
   abortCtrl = new AbortController()
 
   const url = `/api/chapters/${props.chapterId}/ai/${props.mode}`
-  const charIds = [...selectedCharacterIds.value]
-  const worldIds = [...selectedWorldIds.value]
-  const itemIds = [...selectedItemIds.value]
-  const body =
-    props.mode === 'generate'
-      ? {
-          target_word_count: targetWordCount.value,
-          extra_instruction: extraInstruction.value || null,
-          character_ids: charIds,
-          world_entity_ids: worldIds,
-          item_ids: itemIds,
-        }
-      : props.mode === 'continue'
-      ? {
-          cursor_text: props.cursorText,
-          extra_instruction: extraInstruction.value || null,
-          character_ids: charIds,
-          world_entity_ids: worldIds,
-          item_ids: itemIds,
-        }
-      : {
-          selection: props.selection,
-          instruction: rewriteInstruction.value,
-          character_ids: charIds,
-        }
+  const body = buildModeBody()
 
   await streamSSE(url, body, {
     signal: abortCtrl.signal,
@@ -174,6 +150,56 @@ async function start() {
       ElMessage.error(`${t('ai.error')}: ${msg}`)
     },
   })
+}
+
+// 把当前抽屉里的所有选项打包成请求体。start() 和 onPreview() 共用,确保
+// 「预览 prompt」看到的是「实际发出去」的同一份输入。
+function buildModeBody() {
+  const charIds = [...selectedCharacterIds.value]
+  const worldIds = [...selectedWorldIds.value]
+  const itemIds = [...selectedItemIds.value]
+  if (props.mode === 'generate') {
+    return {
+      target_word_count: targetWordCount.value,
+      extra_instruction: extraInstruction.value || null,
+      character_ids: charIds,
+      world_entity_ids: worldIds,
+      item_ids: itemIds,
+    }
+  }
+  if (props.mode === 'continue') {
+    return {
+      cursor_text: props.cursorText,
+      extra_instruction: extraInstruction.value || null,
+      character_ids: charIds,
+      world_entity_ids: worldIds,
+      item_ids: itemIds,
+    }
+  }
+  return {
+    selection: props.selection,
+    instruction: rewriteInstruction.value,
+    character_ids: charIds,
+  }
+}
+
+const previewVisible = ref(false)
+const previewLoading = ref(false)
+const previewMessages = ref([])
+
+async function onPreview() {
+  if (previewLoading.value || !props.chapterId) return
+  previewLoading.value = true
+  try {
+    const body = { mode: props.mode, ...buildModeBody() }
+    const data = await chaptersApi.previewPrompt(props.chapterId, body)
+    previewMessages.value = Array.isArray(data?.messages) ? data.messages : []
+    previewVisible.value = true
+  } catch (e) {
+    ElMessage.error(e?.response?.data?.detail || e.message || '预览失败')
+  } finally {
+    previewLoading.value = false
+  }
 }
 
 function stop() {
@@ -415,7 +441,32 @@ function onReplaceSelection() {
         {{ (mode === 'generate' && (phase !== 'idle' || chapterHasContent)) ? '重新生成' : t('ai.start') }}
       </el-button>
       <el-button v-else type="danger" @click="stop">{{ t('ai.stop') }}</el-button>
+      <el-button
+        :loading="previewLoading"
+        :disabled="phase === 'streaming' || !chapterId"
+        @click="onPreview"
+      >
+        预览 prompt
+      </el-button>
     </div>
+
+    <el-dialog
+      v-model="previewVisible"
+      title="实际发送给 AI 的 prompt"
+      width="780px"
+      append-to-body
+    >
+      <p class="preview-hint">
+        这是当前抽屉里所有选项组装出的 messages,跟点「{{ mode === 'generate' && (phase !== 'idle' || chapterHasContent) ? '重新生成' : t('ai.start') }}」时发出去的内容完全一致(不会调用 AI)。
+      </p>
+      <div v-for="(m, i) in previewMessages" :key="i" class="preview-msg">
+        <div class="preview-role">{{ m.role }}({{ (m.content || '').length }} 字)</div>
+        <pre class="preview-body">{{ m.content }}</pre>
+      </div>
+      <template #footer>
+        <el-button @click="previewVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
 
     <div class="result-area">
       <div class="result-header">
@@ -486,6 +537,39 @@ function onReplaceSelection() {
 }
 .actions {
   margin-bottom: 16px;
+  display: flex;
+  gap: 8px;
+}
+.preview-hint {
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: #86909c;
+  line-height: 1.6;
+}
+.preview-msg {
+  border: 1px solid #e5e6eb;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+.preview-role {
+  background: #f7f8fa;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #4080ff;
+  border-bottom: 1px solid #e5e6eb;
+}
+.preview-body {
+  margin: 0;
+  padding: 10px 12px;
+  font-family: ui-monospace, 'Cascadia Code', 'PingFang SC', monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  max-height: 50vh;
+  overflow-y: auto;
 }
 .selection-box {
   background: #f7f8fa;

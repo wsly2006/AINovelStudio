@@ -31,4 +31,10 @@ export const chaptersApi = {
     client
       .post(`/chapters/${chapterId}/ai/check-beats`, {}, { timeout: 90000 })
       .then((r) => r.data),
+  // 预览实际发送给 LLM 的 messages,不调 AI、不计 token。
+  // body.mode = 'generate' | 'continue' | 'rewrite',按模式按需附带 cursor_text/selection/instruction
+  previewPrompt: (chapterId, body) =>
+    client
+      .post(`/chapters/${chapterId}/ai/preview-prompt`, body, { timeout: 30000 })
+      .then((r) => r.data),
 }

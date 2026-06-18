@@ -55,6 +55,21 @@ class RewriteBody(BaseModel):
     character_ids: list[int] = Field(default_factory=list)
 
 
+class PreviewBody(BaseModel):
+    """预览实际发送的 prompt(不调 LLM)。
+    mode 决定走哪种组装路径,各模式按需用到下面的字段。"""
+
+    mode: str = Field(pattern="^(generate|continue|rewrite)$")
+    target_word_count: int = Field(default=4000, ge=200, le=20000)
+    extra_instruction: str | None = Field(default=None, max_length=2000)
+    cursor_text: str = Field(default="", max_length=200_000)
+    selection: str = Field(default="", max_length=20_000)
+    instruction: str = Field(default="", max_length=2000)
+    character_ids: list[int] = Field(default_factory=list)
+    world_entity_ids: list[int] = Field(default_factory=list)
+    item_ids: list[int] = Field(default_factory=list)
+
+
 @router.get("/ai/info")
 def ai_info(db: Session = Depends(get_db)) -> dict:
     """前端用来判断 AI 是否可用 + 当前模型。"""
@@ -133,6 +148,35 @@ async def ai_rewrite(
         character_ids=body.character_ids,
     )
     return EventSourceResponse(_sse_from_stream(stream))
+
+
+@router.post("/chapters/{chapter_id}/ai/preview-prompt")
+def ai_preview_prompt(
+    chapter_id: int,
+    body: PreviewBody,
+    db: Session = Depends(get_db),
+) -> dict:
+    """返回某种模式下实际会发送给 LLM 的 messages,用于前端调试 / 信任校验。
+    不会调 LLM,不计 token,不写库。"""
+    try:
+        messages = chapter_ai_service.preview_messages(
+            db,
+            chapter_id,
+            mode=body.mode,
+            target_word_count=body.target_word_count,
+            extra_instruction=body.extra_instruction,
+            cursor_text=body.cursor_text,
+            selection=body.selection,
+            instruction=body.instruction,
+            character_ids=body.character_ids,
+            world_entity_ids=body.world_entity_ids,
+            item_ids=body.item_ids,
+        )
+    except ChapterNotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="章节不存在") from e
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
+    return {"messages": messages}
 
 
 @router.post("/chapters/{chapter_id}/ai/summarize")

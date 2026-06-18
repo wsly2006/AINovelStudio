@@ -150,7 +150,7 @@ def _load_items(
     return list(db.execute(stmt).scalars().all())
 
 
-async def stream_generate(
+def _assemble_generate_messages(
     db: Session,
     chapter_id: int,
     *,
@@ -159,7 +159,7 @@ async def stream_generate(
     character_ids: list[int] | None = None,
     world_entity_ids: list[int] | None = None,
     item_ids: list[int] | None = None,
-) -> AsyncGenerator[str, None]:
+) -> list[dict]:
     chapter, siblings = _load_chapter_with_siblings(db, chapter_id)
     characters = _load_characters(db, chapter.project_id, character_ids)
     recent_events = _load_recent_events(db, chapter.project_id, chapter)
@@ -170,7 +170,7 @@ async def stream_generate(
         db, chapter.project_id, [c.id for c in characters]
     )
     threads = plot_thread_service.list_active_threads_for_prompt(db, chapter.project_id)
-    messages = prompts.build_generate_messages(
+    return prompts.build_generate_messages(
         chapter.project,
         chapter,
         siblings,
@@ -185,6 +185,88 @@ async def stream_generate(
         plot_threads=threads,
         db=db,
     )
+
+
+def _assemble_continue_messages(
+    db: Session,
+    chapter_id: int,
+    *,
+    cursor_text: str,
+    extra_instruction: str | None,
+    character_ids: list[int] | None = None,
+    world_entity_ids: list[int] | None = None,
+    item_ids: list[int] | None = None,
+) -> list[dict]:
+    chapter, siblings = _load_chapter_with_siblings(db, chapter_id)
+    characters = _load_characters(db, chapter.project_id, character_ids)
+    recent_events = _load_recent_events(db, chapter.project_id, chapter)
+    world_entities = _load_world_entities(db, chapter.project_id, world_entity_ids)
+    items = _load_items(db, chapter.project_id, item_ids)
+    snapshots = _build_snapshots_for_prompt(db, chapter.project_id, characters, chapter)
+    active_tasks = task_service.list_active_for_characters(
+        db, chapter.project_id, [c.id for c in characters]
+    )
+    threads = plot_thread_service.list_active_threads_for_prompt(db, chapter.project_id)
+    return prompts.build_continue_messages(
+        chapter.project,
+        chapter,
+        siblings,
+        cursor_text=cursor_text,
+        extra_instruction=extra_instruction,
+        characters=characters,
+        recent_events=recent_events,
+        world_entities=world_entities,
+        items=items,
+        snapshots_by_id=snapshots,
+        active_tasks=active_tasks,
+        plot_threads=threads,
+        db=db,
+    )
+
+
+def _assemble_rewrite_messages(
+    db: Session,
+    chapter_id: int,
+    *,
+    selection: str,
+    instruction: str,
+    character_ids: list[int] | None = None,
+) -> list[dict]:
+    chapter = db.get(Chapter, chapter_id)
+    if chapter is None:
+        raise ChapterNotFoundError(chapter_id)
+    characters = _load_characters(db, chapter.project_id, character_ids)
+    threads = plot_thread_service.list_active_threads_for_prompt(db, chapter.project_id)
+    return prompts.build_rewrite_messages(
+        selection=selection,
+        instruction=instruction,
+        project=chapter.project,
+        characters=characters,
+        plot_threads=threads,
+        db=db,
+    )
+
+
+async def stream_generate(
+    db: Session,
+    chapter_id: int,
+    *,
+    target_word_count: int,
+    extra_instruction: str | None,
+    character_ids: list[int] | None = None,
+    world_entity_ids: list[int] | None = None,
+    item_ids: list[int] | None = None,
+) -> AsyncGenerator[str, None]:
+    messages = _assemble_generate_messages(
+        db,
+        chapter_id,
+        target_word_count=target_word_count,
+        extra_instruction=extra_instruction,
+        character_ids=character_ids,
+        world_entity_ids=world_entity_ids,
+        item_ids=item_ids,
+    )
+    chapter = db.get(Chapter, chapter_id)
     async for delta in ai_client.stream_chat(
         db, messages, scene="chapter.generate", project_id=chapter.project_id
     ):
@@ -201,31 +283,16 @@ async def stream_continue(
     world_entity_ids: list[int] | None = None,
     item_ids: list[int] | None = None,
 ) -> AsyncGenerator[str, None]:
-    chapter, siblings = _load_chapter_with_siblings(db, chapter_id)
-    characters = _load_characters(db, chapter.project_id, character_ids)
-    recent_events = _load_recent_events(db, chapter.project_id, chapter)
-    world_entities = _load_world_entities(db, chapter.project_id, world_entity_ids)
-    items = _load_items(db, chapter.project_id, item_ids)
-    snapshots = _build_snapshots_for_prompt(db, chapter.project_id, characters, chapter)
-    active_tasks = task_service.list_active_for_characters(
-        db, chapter.project_id, [c.id for c in characters]
-    )
-    threads = plot_thread_service.list_active_threads_for_prompt(db, chapter.project_id)
-    messages = prompts.build_continue_messages(
-        chapter.project,
-        chapter,
-        siblings,
+    messages = _assemble_continue_messages(
+        db,
+        chapter_id,
         cursor_text=cursor_text,
         extra_instruction=extra_instruction,
-        characters=characters,
-        recent_events=recent_events,
-        world_entities=world_entities,
-        items=items,
-        snapshots_by_id=snapshots,
-        active_tasks=active_tasks,
-        plot_threads=threads,
-        db=db,
+        character_ids=character_ids,
+        world_entity_ids=world_entity_ids,
+        item_ids=item_ids,
     )
+    chapter = db.get(Chapter, chapter_id)
     async for delta in ai_client.stream_chat(
         db, messages, scene="chapter.continue", project_id=chapter.project_id
     ):
@@ -240,23 +307,64 @@ async def stream_rewrite(
     instruction: str,
     character_ids: list[int] | None = None,
 ) -> AsyncGenerator[str, None]:
-    chapter = db.get(Chapter, chapter_id)
-    if chapter is None:
-        raise ChapterNotFoundError(chapter_id)
-    characters = _load_characters(db, chapter.project_id, character_ids)
-    threads = plot_thread_service.list_active_threads_for_prompt(db, chapter.project_id)
-    messages = prompts.build_rewrite_messages(
+    messages = _assemble_rewrite_messages(
+        db,
+        chapter_id,
         selection=selection,
         instruction=instruction,
-        project=chapter.project,
-        characters=characters,
-        plot_threads=threads,
-        db=db,
+        character_ids=character_ids,
     )
+    chapter = db.get(Chapter, chapter_id)
     async for delta in ai_client.stream_chat(
         db, messages, scene="chapter.rewrite", project_id=chapter.project_id
     ):
         yield delta
+
+
+def preview_messages(
+    db: Session,
+    chapter_id: int,
+    *,
+    mode: str,
+    target_word_count: int = 4000,
+    extra_instruction: str | None = None,
+    cursor_text: str = "",
+    selection: str = "",
+    instruction: str = "",
+    character_ids: list[int] | None = None,
+    world_entity_ids: list[int] | None = None,
+    item_ids: list[int] | None = None,
+) -> list[dict]:
+    """组装但不调 LLM,只用于前端预览实际发出去的 prompt。"""
+    if mode == "generate":
+        return _assemble_generate_messages(
+            db,
+            chapter_id,
+            target_word_count=target_word_count,
+            extra_instruction=extra_instruction,
+            character_ids=character_ids,
+            world_entity_ids=world_entity_ids,
+            item_ids=item_ids,
+        )
+    if mode == "continue":
+        return _assemble_continue_messages(
+            db,
+            chapter_id,
+            cursor_text=cursor_text,
+            extra_instruction=extra_instruction,
+            character_ids=character_ids,
+            world_entity_ids=world_entity_ids,
+            item_ids=item_ids,
+        )
+    if mode == "rewrite":
+        return _assemble_rewrite_messages(
+            db,
+            chapter_id,
+            selection=selection,
+            instruction=instruction,
+            character_ids=character_ids,
+        )
+    raise ValueError(f"unsupported preview mode: {mode}")
 
 
 async def summarize(db: Session, chapter_id: int) -> str:
