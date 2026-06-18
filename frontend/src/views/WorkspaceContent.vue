@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -42,6 +42,39 @@ const selectedChapterFullTitle = computed(() =>
   selectedChapter.value ? formatChapterFullTitle(selectedChapter.value, t) : ''
 )
 
+// 章节概述本地缓存:在编辑器顶部直接编辑,失焦自动落库
+const summaryInputEl = ref(null)
+const summaryDraft = ref('')
+watch(
+  () => selectedChapter.value?.id,
+  () => {
+    summaryDraft.value = selectedChapter.value?.summary || ''
+  },
+  { immediate: true }
+)
+watch(
+  () => selectedChapter.value?.summary,
+  (val) => {
+    // 外部(如 AI 生成梗概)更新了 summary 时同步到草稿,避免覆盖本地正在输入的修改
+    const ta = summaryInputEl.value?.$el?.querySelector?.('textarea')
+    if (document.activeElement !== ta) {
+      summaryDraft.value = val || ''
+    }
+  }
+)
+
+async function flushSummary() {
+  const ch = selectedChapter.value
+  if (!ch) return
+  const next = summaryDraft.value || ''
+  if ((ch.summary || '') === next) return
+  try {
+    await store.updateChapterMeta(ch.id, { summary: next })
+  } catch (e) {
+    ElMessage.error(e.message || t('workspace.updateFailed'))
+  }
+}
+
 // 工程内的人物列表 / 世界观 / 物品(供 AI 注入多选用)
 const projectCharacters = computed(() => charactersStore.items)
 const projectWorld = computed(() => worldStore.items)
@@ -73,11 +106,13 @@ async function flushEditor() {
 async function onSelect(chapter) {
   if (chapter.id === store.selectedId) return
   await flushEditor()
+  await flushSummary()
   store.select(chapter.id)
 }
 
 async function onCreate() {
   await flushEditor()
+  await flushSummary()
   dialogMode.value = 'create'
   dialogOrderIndex.value = store.chapters.length + 1
   dialogTitle.value = ''
@@ -272,6 +307,16 @@ function onDrawerAccept(text) { editorRef.value?.replaceSelection(text) }
           @summarize="onAISummarize"
         />
       </div>
+      <el-input
+        ref="summaryInputEl"
+        v-model="summaryDraft"
+        type="textarea"
+        :autosize="{ minRows: 2, maxRows: 5 }"
+        :placeholder="t('chapterDialog.summaryPlaceholder')"
+        class="chap-summary"
+        resize="none"
+        @blur="flushSummary"
+      />
       <ChapterEditor
         ref="editorRef"
         :key="selectedChapter.id"
@@ -343,7 +388,7 @@ function onDrawerAccept(text) { editorRef.value?.replaceSelection(text) }
   justify-content: space-between;
   gap: 16px;
   flex-shrink: 0;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
   flex-wrap: wrap;
 }
 .chap-title {
@@ -351,6 +396,27 @@ function onDrawerAccept(text) { editorRef.value?.replaceSelection(text) }
   font-size: 20px;
   font-weight: 600;
   align-self: center;
+}
+.chap-summary {
+  flex-shrink: 0;
+  margin-bottom: 12px;
+}
+.chap-summary :deep(.el-textarea__inner) {
+  font-size: 13px;
+  line-height: 1.6;
+  color: #4e5969;
+  background: #f7f8fa;
+  border-color: transparent;
+  box-shadow: none;
+  padding: 8px 12px;
+}
+.chap-summary :deep(.el-textarea__inner:hover) {
+  background: #f2f3f5;
+}
+.chap-summary :deep(.el-textarea__inner:focus) {
+  background: #fff;
+  border-color: var(--el-color-primary);
+  box-shadow: 0 0 0 1px var(--el-color-primary) inset;
 }
 .editor-host {
   flex: 1;
