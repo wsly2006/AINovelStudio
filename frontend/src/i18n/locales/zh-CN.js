@@ -414,6 +414,14 @@ export default {
     testButton: '测试连接',
     testOk: '连接正常',
     testFailed: '连接失败',
+
+    tabWriting: '写作模型',
+    tabReview: '审稿模型',
+    tabWritingHint: '负责生成 / 续写 / 改写 / 抽取等所有创作场景',
+    tabReviewHint: '负责评分、AI 文风检查、情节一致性检查 — 用另一个模型当评审能避免「自评偏差」',
+    reviewEnabledLabel: '启用审稿模型',
+    reviewEnabledHint: '关闭后,评分 / 文风检查 / 一致性检查回落使用写作模型',
+    reviewFallbackTip: '当前未启用,审稿场景会沿用写作模型',
   },
 
   characters: {

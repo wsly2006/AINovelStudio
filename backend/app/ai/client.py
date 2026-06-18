@@ -17,7 +17,7 @@ from collections.abc import AsyncGenerator
 
 from sqlalchemy.orm import Session
 
-from app.ai.runtime import RuntimeAIConfig, resolve
+from app.ai.runtime import RuntimeAIConfig, resolve, role_for_scene
 from app.database import SessionLocal
 from app.logging_config import get_ai_logger
 from app.models.ai_call_log import AICallLog
@@ -138,7 +138,7 @@ async def stream_chat(
     project_id: int | None = None,
 ) -> AsyncGenerator[str, None]:
     """流式 chat completion,只 yield 文本增量。"""
-    cfg = resolve(db)
+    cfg = resolve(db, role_for_scene(scene))
     kwargs = _build_kwargs(cfg)
     if temperature is not None:
         kwargs["temperature"] = temperature
@@ -217,7 +217,7 @@ async def complete(
     max_tokens: int | None = None,
     project_id: int | None = None,
 ) -> str:
-    cfg = resolve(db)
+    cfg = resolve(db, role_for_scene(scene))
     kwargs = _build_kwargs(cfg)
     if temperature is not None:
         kwargs["temperature"] = temperature
