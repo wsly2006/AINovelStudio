@@ -4,7 +4,7 @@ import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, MagicStick, Search, StarFilled } from '@element-plus/icons-vue'
-import { plotApi } from '../api/analysis'
+import { plotApi, issuesApi } from '../api/analysis'
 import { plotThreadsApi } from '../api/plotThreads'
 import { stateEventsApi } from '../api/stateEvents'
 import { useCharactersStore } from '../stores/characters'
@@ -29,6 +29,8 @@ const extracting = ref(false)
 const checking = ref(false)
 const extractProgress = ref({ index: 0, total: 0, title: '' })
 const issues = ref([])
+// 列表过滤:'open' / 'resolved' / 'dismissed' / 'all'
+const issuesStatusFilter = ref('open')
 
 const dialogVisible = ref(false)
 const form = ref({
@@ -148,14 +150,16 @@ async function loadAll() {
     if (!charsStore.items.length) await charsStore.load(projectId.value)
     if (worldStore.projectId !== projectId.value) await worldStore.load(projectId.value)
     if (laddersStore.projectId !== projectId.value) await laddersStore.load(projectId.value)
-    const [evs, ses, ths] = await Promise.all([
+    const [evs, ses, ths, iss] = await Promise.all([
       plotApi.listEvents(projectId.value),
       stateEventsApi.list(projectId.value),
       plotThreadsApi.list(projectId.value).catch(() => []),
+      issuesApi.list(projectId.value).catch(() => []),
     ])
     events.value = evs
     stateEvents.value = ses
     threads.value = ths
+    issues.value = iss
   } finally {
     loading.value = false
   }
@@ -262,16 +266,18 @@ async function onExtract() {
 
 async function onCheck() {
   checking.value = true
-  issues.value = []
   const closeMsg = ElMessage({ type: 'info', message: t('plot.checking'), duration: 0 })
   try {
     const result = await plotApi.check(projectId.value)
-    issues.value = result.issues || []
+    // 跑完重新拉一次完整列表(含老 run 的 issue),把过滤还原到 open
+    issuesStatusFilter.value = 'open'
+    issues.value = await issuesApi.list(projectId.value)
     closeMsg.close()
-    if (issues.value.length === 0) {
+    const newCount = (result.issues || []).length
+    if (newCount === 0) {
       ElMessage.success(t('plot.noIssues'))
     } else {
-      ElMessage.warning(t('plot.issuesFound', { n: issues.value.length }))
+      ElMessage.warning(t('plot.issuesFound', { n: newCount }))
     }
   } catch (e) {
     closeMsg.close()
@@ -281,6 +287,41 @@ async function onCheck() {
   }
 }
 
+async function onIssueStatus(iss, status) {
+  try {
+    const updated = await issuesApi.setStatus(iss.id, status)
+    const i = issues.value.findIndex((x) => x.id === iss.id)
+    if (i >= 0) issues.value[i] = updated
+  } catch (e) {
+    ElMessage.error(e.message || t('common.failed'))
+  }
+}
+
+async function onIssueDelete(iss) {
+  try {
+    await ElMessageBox.confirm('删除这条记录?此操作不可撤销。', '删除', {
+      type: 'warning',
+      confirmButtonText: t('common.delete'),
+      cancelButtonText: t('common.cancel'),
+    })
+  } catch {
+    return
+  }
+  try {
+    await issuesApi.remove(iss.id)
+    issues.value = issues.value.filter((x) => x.id !== iss.id)
+  } catch (e) {
+    ElMessage.error(e.message || t('common.failed'))
+  }
+}
+
+const filteredIssues = computed(() => {
+  if (issuesStatusFilter.value === 'all') return issues.value
+  return issues.value.filter((i) => i.status === issuesStatusFilter.value)
+})
+
+const openIssueCount = computed(() => issues.value.filter((i) => i.status === 'open').length)
+
 function nameOf(id) {
   return charById.value[id]?.name || `#${id}`
 }
@@ -289,7 +330,12 @@ function nameOf(id) {
 <template>
   <div class="plot-page" v-loading="loading">
     <header class="header">
-      <span class="title">{{ t('plot.pageTitle') }} ({{ events.length }})</span>
+      <span class="title">
+        {{ t('plot.pageTitle') }} ({{ events.length }})
+        <span v-if="openIssueCount > 0" class="open-issue-pill" :title="`${openIssueCount} 个未解决问题`">
+          ⚠ {{ openIssueCount }}
+        </span>
+      </span>
       <div class="actions">
         <el-button :icon="Search" :loading="checking" @click="onCheck">
           {{ t('plot.check') }}
@@ -314,13 +360,55 @@ function nameOf(id) {
     </div>
 
     <div v-if="issues.length" class="issues">
-      <div class="issues-title">{{ t('plot.issuesFound', { n: issues.length }) }}</div>
-      <div v-for="(iss, i) in issues" :key="i" class="issue">
+      <div class="issues-head">
+        <span class="issues-title">
+          一致性问题(共 {{ issues.length }},未解决 {{ openIssueCount }})
+        </span>
+        <el-radio-group v-model="issuesStatusFilter" size="small">
+          <el-radio-button value="open">未解决</el-radio-button>
+          <el-radio-button value="resolved">已修</el-radio-button>
+          <el-radio-button value="dismissed">已忽略</el-radio-button>
+          <el-radio-button value="all">全部</el-radio-button>
+        </el-radio-group>
+      </div>
+      <div v-if="filteredIssues.length === 0" class="issue-empty">
+        当前过滤下没有记录
+      </div>
+      <div v-for="iss in filteredIssues" :key="iss.id" class="issue" :class="`issue-${iss.status}`">
         <div class="issue-head">
-          <el-tag type="warning" size="small">{{ iss.kind }}</el-tag>
+          <el-tag :type="iss.status === 'open' ? 'warning' : 'info'" size="small">{{ iss.kind }}</el-tag>
           <span class="issue-title">{{ iss.title }}</span>
+          <span class="issue-actions">
+            <el-button
+              v-if="iss.status !== 'resolved'"
+              text
+              size="small"
+              type="success"
+              @click="onIssueStatus(iss, 'resolved')"
+            >
+              已修
+            </el-button>
+            <el-button
+              v-if="iss.status !== 'dismissed'"
+              text
+              size="small"
+              @click="onIssueStatus(iss, 'dismissed')"
+            >
+              忽略
+            </el-button>
+            <el-button
+              v-if="iss.status !== 'open'"
+              text
+              size="small"
+              type="warning"
+              @click="onIssueStatus(iss, 'open')"
+            >
+              重开
+            </el-button>
+            <el-button text size="small" type="danger" @click="onIssueDelete(iss)">删</el-button>
+          </span>
         </div>
-        <div class="issue-detail">{{ iss.detail }}</div>
+        <div v-if="iss.detail" class="issue-detail">{{ iss.detail }}</div>
         <div v-if="iss.related_event_ids?.length" class="issue-meta">
           {{ t('plot.issueRelatedEvents') }}: {{ iss.related_event_ids.join(', ') }}
         </div>
@@ -512,10 +600,23 @@ function nameOf(id) {
   padding: 12px 14px;
   margin-bottom: 16px;
 }
+.issues-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
 .issues-title {
   font-weight: 600;
   color: #d46b08;
-  margin-bottom: 8px;
+}
+.issue-empty {
+  text-align: center;
+  color: #c9cdd4;
+  font-size: 12px;
+  padding: 16px 0;
 }
 .issue {
   padding: 8px 0;
@@ -525,14 +626,29 @@ function nameOf(id) {
   border-top: none;
   padding-top: 0;
 }
+.issue.issue-resolved,
+.issue.issue-dismissed {
+  opacity: 0.55;
+}
+.issue.issue-resolved .issue-title {
+  text-decoration: line-through;
+}
 .issue-head {
   display: flex;
   align-items: center;
   gap: 8px;
   margin-bottom: 4px;
+  flex-wrap: wrap;
 }
 .issue-title {
   font-weight: 500;
+  flex: 1;
+  min-width: 200px;
+}
+.issue-actions {
+  display: inline-flex;
+  gap: 2px;
+  flex-shrink: 0;
 }
 .issue-detail {
   font-size: 13px;
@@ -543,6 +659,16 @@ function nameOf(id) {
   font-size: 12px;
   color: #86909c;
   margin-top: 4px;
+}
+.open-issue-pill {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: 10px;
+  background: #fff1f0;
+  color: #f5222d;
+  font-size: 11px;
+  font-weight: 600;
 }
 .empty {
   text-align: center;

@@ -1,15 +1,29 @@
 import json
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sse_starlette.sse import EventSourceResponse
 
 from app.ai.client import AIError, AINotConfiguredError
 from app.database import get_db
+from app.schemas.consistency_issue import (
+    ConsistencyCheckResult,
+    ConsistencyIssueRead,
+    ConsistencyIssueUpdate,
+)
 from app.schemas.plot_event import PlotEventCreate, PlotEventRead, PlotEventUpdate
 from app.schemas.relation import RelationCreate, RelationRead, RelationUpdate
-from app.services import analysis_service, plot_service, relation_service
+from app.services import (
+    analysis_service,
+    consistency_service,
+    plot_service,
+    relation_service,
+)
+from app.services.consistency_service import (
+    ConsistencyIssueNotFoundError,
+    ProjectNotFoundForIssueError,
+)
 from app.services.plot_service import InvalidPlotEventError, PlotEventNotFoundError
 from app.services.relation_service import InvalidRelationError, RelationNotFoundError
 
@@ -127,14 +141,67 @@ async def extract_plot(
     return EventSourceResponse(gen())
 
 
-@plot_project_router.post("/check")
-async def check_consistency(project_id: int, db: Session = Depends(get_db)) -> dict:
+@plot_project_router.post("/check", response_model=ConsistencyCheckResult)
+async def check_consistency(
+    project_id: int, db: Session = Depends(get_db)
+) -> ConsistencyCheckResult:
+    """跑一次一致性扫描,新发现的 issue 落库,返回本批次 + open 总数。"""
     try:
-        return await analysis_service.check_consistency(db, project_id)
+        return await consistency_service.run_check(db, project_id)
+    except ProjectNotFoundForIssueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="工程不存在") from e
     except AINotConfiguredError as e:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
     except AIError as e:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e)) from e
+
+
+# ============ 一致性问题 (持久化) ============
+
+issues_project_router = APIRouter(
+    prefix="/api/projects/{project_id}/issues", tags=["consistency-issues"]
+)
+issues_router = APIRouter(prefix="/api/issues", tags=["consistency-issues"])
+
+
+@issues_project_router.get("", response_model=list[ConsistencyIssueRead])
+def list_issues(
+    project_id: int,
+    status_filter: str | None = Query(default=None, alias="status"),
+    db: Session = Depends(get_db),
+) -> list[ConsistencyIssueRead]:
+    try:
+        return consistency_service.list_issues(db, project_id, status=status_filter)
+    except ProjectNotFoundForIssueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="工程不存在") from e
+
+
+@issues_project_router.get("/open-count")
+def count_open_issues(project_id: int, db: Session = Depends(get_db)) -> dict:
+    try:
+        return {"count": consistency_service.count_open(db, project_id)}
+    except ProjectNotFoundForIssueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="工程不存在") from e
+
+
+@issues_router.patch("/{issue_id}", response_model=ConsistencyIssueRead)
+def update_issue(
+    issue_id: int,
+    payload: ConsistencyIssueUpdate,
+    db: Session = Depends(get_db),
+) -> ConsistencyIssueRead:
+    try:
+        return consistency_service.update_issue(db, issue_id, payload)
+    except ConsistencyIssueNotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="问题不存在") from e
+
+
+@issues_router.delete("/{issue_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_issue(issue_id: int, db: Session = Depends(get_db)) -> None:
+    try:
+        consistency_service.delete_issue(db, issue_id)
+    except ConsistencyIssueNotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="问题不存在") from e
 
 
 # 单章非流式抽取:AI 生成正文落地后调用,把这一章的 plot_events 全删重抽,

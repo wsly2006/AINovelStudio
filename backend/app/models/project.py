@@ -9,6 +9,7 @@ from app.database import Base
 if TYPE_CHECKING:
     from app.models.chapter import Chapter
     from app.models.character import Character
+    from app.models.consistency_issue import ConsistencyIssue
     from app.models.item import Item
     from app.models.ladder import Ladder
     from app.models.plot_event import PlotEvent
@@ -82,6 +83,14 @@ class Project(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
         order_by="PlotThread.order_index, PlotThread.id",
+    )
+
+    consistency_issues: Mapped[list["ConsistencyIssue"]] = relationship(
+        "ConsistencyIssue",
+        back_populates="project",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        order_by="ConsistencyIssue.created_at.desc()",
     )
 
     world_entities: Mapped[list["WorldEntity"]] = relationship(
