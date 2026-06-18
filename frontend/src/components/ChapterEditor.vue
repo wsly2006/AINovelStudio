@@ -30,7 +30,7 @@ const wordCount = ref(0)
 // 否则切章瞬间 props 已先变到新 id,导致 flush 把旧章节的内容写到新章节。
 const editingChapterId = ref(null)
 
-const { state: saveState, savedAt, flush } = useAutoSave(
+const { state: saveState, savedAt, flush, reset: resetAutoSave } = useAutoSave(
   content,
   async (text) => {
     const cid = editingChapterId.value
@@ -163,10 +163,13 @@ async function loadAndMount() {
   try {
     const detail = await chaptersApi.get(props.chapterId)
     content.value = detail.content || ''
+    // 重置 autosave 基线为刚拉到的内容,避免 watch 把刚加载的值误判为 dirty
+    resetAutoSave(content.value)
     wordCount.value = detail.word_count || 0
   } catch (e) {
     console.error(e)
     content.value = ''
+    resetAutoSave('')
   } finally {
     editingChapterId.value = props.chapterId
     loading.value = false

@@ -7,7 +7,7 @@ import { ref, watch, onBeforeUnmount } from 'vue'
  *
  * - contentRef 任意变更 → state 'dirty',防抖后调用 saveFn
  * - saveFn 抛错 → state 'error',留下 lastError 给调用方读取
- * - flush() 立刻触发保存,返回 Promise,用于切换章节前 flush
+ * - flush() 立刻把当前内容保存上去,只要跟最近一次成功保存的快照不一致就一定会发请求
  * - 组件卸载前自动 flush 一次(fire-and-forget)
  */
 export function useAutoSave(contentRef, saveFn, { delay = 1500 } = {}) {
@@ -17,8 +17,9 @@ export function useAutoSave(contentRef, saveFn, { delay = 1500 } = {}) {
 
   let timer = null
   let inflight = null
-  // 第一次 watch 触发是初始化赋值,跳过它
-  let primed = false
+  // 最近一次成功保存的内容快照。用它判断是否真的有未落库的改动,
+  // 而不是依赖「watcher 触发过没」—— 后者会被 Vue 的初始化时机坑掉。
+  let lastSaved = contentRef.value
 
   function clearTimer() {
     if (timer) {
@@ -30,12 +31,18 @@ export function useAutoSave(contentRef, saveFn, { delay = 1500 } = {}) {
   async function doSave() {
     clearTimer()
     if (state.value === 'saving') return inflight
-    state.value = 'saving'
     const snapshot = contentRef.value
+    if (snapshot === lastSaved) {
+      // 已经一致,不再发请求
+      state.value = 'saved'
+      return
+    }
+    state.value = 'saving'
     inflight = (async () => {
       try {
         await saveFn(snapshot)
-        // 期间又有变更,保持 dirty;否则 saved
+        lastSaved = snapshot
+        // 期间又有变更,保持 dirty 继续排队;否则 saved
         if (contentRef.value === snapshot) {
           state.value = 'saved'
           savedAt.value = new Date()
@@ -61,9 +68,9 @@ export function useAutoSave(contentRef, saveFn, { delay = 1500 } = {}) {
     timer = setTimeout(doSave, delay)
   }
 
-  watch(contentRef, () => {
-    if (!primed) {
-      primed = true
+  watch(contentRef, (val) => {
+    if (val === lastSaved) {
+      // 程序化把内容设回上次保存值(切章 reload),不算 dirty
       return
     }
     state.value = 'dirty'
@@ -72,18 +79,32 @@ export function useAutoSave(contentRef, saveFn, { delay = 1500 } = {}) {
 
   async function flush() {
     if (inflight) await inflight
-    if (state.value === 'dirty' || state.value === 'error') {
+    // 只要当前内容跟最近成功保存的不一致,就 doSave —— 不管 state 是什么。
+    // 这能挡住 watcher 还没来得及把 state 标 dirty 的竞争。
+    if (contentRef.value !== lastSaved || state.value === 'error') {
       await doSave()
     }
   }
 
+  /**
+   * 切换到新章节时调:把基线重置成新章节的初始内容,
+   * 这样首次 watch 触发不会把当前章节的内容当成 dirty 写到新章节里。
+   */
+  function reset(newContent) {
+    clearTimer()
+    lastSaved = newContent
+    state.value = 'idle'
+    lastError.value = null
+  }
+
   onBeforeUnmount(() => {
-    if (state.value === 'dirty' || state.value === 'error') {
+    if (contentRef.value !== lastSaved) {
       // fire-and-forget,不阻塞卸载
       doSave().catch(() => {})
     }
     clearTimer()
   })
 
-  return { state, savedAt, lastError, flush }
+  return { state, savedAt, lastError, flush, reset }
 }
+
