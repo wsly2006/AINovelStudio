@@ -22,11 +22,16 @@ const view = shallowRef(null)
 const content = ref('')
 const loading = ref(true)
 const wordCount = ref(0)
+// 当前编辑器里实际承载的章节 id。saveFn 用这个而不是 props.chapterId,
+// 否则切章瞬间 props 已先变到新 id,导致 flush 把旧章节的内容写到新章节。
+const editingChapterId = ref(null)
 
 const { state: saveState, savedAt, flush } = useAutoSave(
   content,
   async (text) => {
-    const result = await chaptersApi.saveContent(props.chapterId, text)
+    const cid = editingChapterId.value
+    if (!cid) return
+    const result = await chaptersApi.saveContent(cid, text)
     wordCount.value = result.word_count
     emit('saved', result)
   },
@@ -136,6 +141,8 @@ function buildState(initial) {
 
 async function loadAndMount() {
   loading.value = true
+  // 加载期间清空 id,挡住任何后台 flush 把当前内容写到错误的章节
+  editingChapterId.value = null
   try {
     const detail = await chaptersApi.get(props.chapterId)
     content.value = detail.content || ''
@@ -144,6 +151,7 @@ async function loadAndMount() {
     console.error(e)
     content.value = ''
   } finally {
+    editingChapterId.value = props.chapterId
     loading.value = false
   }
 
