@@ -137,6 +137,46 @@ async def check_consistency(project_id: int, db: Session = Depends(get_db)) -> d
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e)) from e
 
 
+# 单章非流式抽取:AI 生成正文落地后调用,把这一章的 plot_events 全删重抽,
+# 避免用户漏点「索引本章」导致后续生成看不到刚发生的事(沉默失败)。
+single_chapter_plot_router = APIRouter(prefix="/api/chapters", tags=["plot"])
+
+
+@single_chapter_plot_router.post("/{chapter_id}/auto-index")
+async def auto_index_chapter(
+    chapter_id: int, db: Session = Depends(get_db)
+) -> dict:
+    from app.models.chapter import Chapter
+
+    chapter = db.get(Chapter, chapter_id)
+    if chapter is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="章节不存在")
+
+    extracted = 0
+    skipped = False
+    last_error: str | None = None
+    try:
+        async for evt in analysis_service.extract_plot(
+            db, chapter.project_id, chapter_ids=[chapter_id]
+        ):
+            kind = evt.get("event")
+            data = evt.get("data") or {}
+            if kind == "progress" and data.get("skipped"):
+                skipped = True
+            elif kind == "done":
+                extracted = int(data.get("extracted") or 0)
+            elif kind == "error":
+                last_error = str(data.get("message") or "")
+    except AINotConfiguredError as e:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
+    except AIError as e:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e)) from e
+
+    if last_error:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=last_error)
+    return {"extracted": extracted, "skipped": skipped}
+
+
 @plot_router.patch("/{event_id}", response_model=PlotEventRead)
 def update_event(
     event_id: int, payload: PlotEventUpdate, db: Session = Depends(get_db)

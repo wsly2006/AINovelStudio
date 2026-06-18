@@ -442,18 +442,38 @@ function onStyleJumpRewrite({ quote, suggestion, why, kind }) {
 async function onDrawerReplace(text) {
   await snapshotBeforeAI()
   editorRef.value?.replaceAll(text)
+  await autoIndexAfterAI()
 }
 async function onDrawerAppend(text) {
   await snapshotBeforeAI()
   editorRef.value?.appendToEnd(text)
+  await autoIndexAfterAI()
 }
 async function onDrawerInsert(text) {
   await snapshotBeforeAI()
   editorRef.value?.insertAtCursor(text)
+  await autoIndexAfterAI()
 }
 async function onDrawerAccept(text) {
   await snapshotBeforeAI()
   editorRef.value?.replaceSelection(text)
+  await autoIndexAfterAI()
+}
+
+// AI 写完正文后:先把内容 flush 到 DB,再调单章自动索引。
+// 失败不弹错,只 console.warn——这是兜底优化,不应妨碍主流程。
+async function autoIndexAfterAI() {
+  const id = selectedChapter.value?.id
+  if (!id) return
+  try {
+    await flushEditor()
+    const res = await chaptersApi.autoIndex(id)
+    if (res?.extracted > 0) {
+      ElMessage.success(`已自动索引本章新增 ${res.extracted} 个事件`)
+    }
+  } catch (e) {
+    console.warn('自动索引失败,跳过:', e?.message || e)
+  }
 }
 </script>
 

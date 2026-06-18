@@ -19,4 +19,10 @@ export const chaptersApi = {
     client
       .post(`/chapters/${chapterId}/ai/suggest-beats`, payload, { timeout: 90000 })
       .then((r) => r.data),
+  // 单章自动索引:AI 写完正文落地后调,把这章的 plot_events 全删重抽,
+  // 避免下次生成漏掉刚发生的事(沉默失败)。
+  autoIndex: (chapterId) =>
+    client
+      .post(`/chapters/${chapterId}/auto-index`, {}, { timeout: 90000 })
+      .then((r) => r.data),
 }
