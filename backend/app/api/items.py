@@ -18,6 +18,8 @@ from app.services.item_service import (
 
 class ItemExtractRequest(BaseModel):
     mode: str = Field(default="merge", pattern="^(merge|replace)$")
+    # 限定要扫的章节;None 表示全工程扫描
+    chapter_ids: list[int] | None = None
 
 
 # 工程下集合
@@ -56,7 +58,9 @@ async def extract_items(
 ) -> EventSourceResponse:
     async def gen():
         try:
-            async for evt in item_extract_service.extract_items(db, project_id, body.mode):
+            async for evt in item_extract_service.extract_items(
+                db, project_id, body.mode, body.chapter_ids
+            ):
                 yield {
                     "event": evt["event"],
                     "data": json.dumps(evt["data"], ensure_ascii=False),

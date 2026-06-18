@@ -343,6 +343,19 @@ export default {
     summarizing: '正在生成梗概…',
     summarized: '梗概已生成并保存到该章节',
 
+    indexChapter: '索引本章',
+    indexingStart: '正在索引本章…',
+    indexingStep: '正在抽取 {step}…',
+    indexingDone: '索引完成 · {detail}',
+    indexingEmpty: '索引完成,本章未发现可入库的新条目',
+    indexStep: {
+      characters: '人物',
+      world: '世界观',
+      items: '物品',
+      relations: '关系',
+      plot: '情节',
+    },
+
     injectCharactersLabel: '参与人物',
     injectCharactersHint: '勾选的人物档案会注入 prompt,帮助 AI 保持人物一致',
     injectCharactersEmpty: '当前工程还没有人物,可在「人物」页新建后再来勾选',

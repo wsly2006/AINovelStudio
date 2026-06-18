@@ -4,6 +4,7 @@ import json
 import re
 from collections.abc import AsyncGenerator
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.ai import client as ai_client
@@ -75,6 +76,7 @@ async def extract_world_entities(
     project_id: int,
     kinds: list[str] | None,
     mode: str,
+    chapter_ids: list[int] | None = None,
 ) -> AsyncGenerator[dict, None]:
     project = db.get(Project, project_id)
     if project is None:
@@ -85,13 +87,18 @@ async def extract_world_entities(
     if not target_kinds:
         target_kinds = list(ENTITY_KINDS)
 
-    if mode == "replace":
+    # 指定了章节时强制走 merge:replace 全量删除会和「只扫本章」语义冲突
+    effective_mode = "merge" if chapter_ids else mode
+    if effective_mode == "replace":
         for e in list(project.world_entities):
             if e.kind in target_kinds:
                 db.delete(e)
         db.commit()
 
-    chapters = list(project.chapters)
+    stmt = select(Chapter).where(Chapter.project_id == project_id).order_by(Chapter.order_index)
+    if chapter_ids:
+        stmt = stmt.where(Chapter.id.in_(chapter_ids))
+    chapters = list(db.execute(stmt).scalars().all())
     total = len(chapters)
     if total == 0:
         yield {"event": "done", "data": {"total": 0, "extracted": 0}}

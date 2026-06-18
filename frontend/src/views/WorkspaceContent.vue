@@ -13,6 +13,7 @@ import ChapterCreateDialog from '../components/ChapterCreateDialog.vue'
 import AIToolbar from '../components/AIToolbar.vue'
 import AIGenerateDrawer from '../components/AIGenerateDrawer.vue'
 import { formatChapterFullTitle } from '../composables/chapterTitle'
+import { indexChapter } from '../composables/indexChapter'
 
 const route = useRoute()
 const store = useWorkspaceStore()
@@ -271,6 +272,61 @@ async function onAISummarize() {
   }
 }
 
+// 索引本章:串行调 5 个 AI 抽取接口,只覆盖当前章。
+// 进度用一条常驻 ElMessage 滚动展示,最后汇总到 success。
+const indexing = ref(false)
+async function onIndexChapter() {
+  if (!selectedChapter.value || indexing.value) return
+  await flushEditor()
+  await flushSummary()
+  const projectId = Number(route.params.id)
+  const chapterId = selectedChapter.value.id
+  indexing.value = true
+  const progressMsg = ElMessage({
+    type: 'info',
+    message: t('ai.indexingStart'),
+    duration: 0,
+    showClose: true,
+  })
+  const totals = {}
+  try {
+    const summary = await indexChapter(projectId, chapterId, {
+      onStepStart: (key) => {
+        progressMsg.message = t('ai.indexingStep', { step: t(`ai.indexStep.${key}`) })
+      },
+      onStepDone: (key, { extracted }) => {
+        totals[key] = extracted
+      },
+      onStepError: (key, msg) => {
+        // 单步失败只警告不中断,继续抽下一类
+        ElMessage.warning(`${t(`ai.indexStep.${key}`)}: ${msg}`)
+      },
+    })
+    // 抽完刷新前端 store,人物 / 世界观 / 物品页面的列表会同步更新
+    await Promise.all([
+      charactersStore.load(projectId).catch(() => {}),
+      worldStore.load(projectId).catch(() => {}),
+      itemsStore.load(projectId).catch(() => {}),
+    ])
+    progressMsg.close()
+    const parts = []
+    for (const key of ['characters', 'world', 'items', 'relations', 'plot']) {
+      const n = summary[key]?.extracted
+      if (typeof n === 'number') parts.push(`${t(`ai.indexStep.${key}`)} +${n}`)
+    }
+    ElMessage.success(
+      parts.length
+        ? t('ai.indexingDone', { detail: parts.join(' · ') })
+        : t('ai.indexingEmpty')
+    )
+  } catch (e) {
+    progressMsg.close()
+    ElMessage.error(`${t('ai.error')}: ${e.message}`)
+  } finally {
+    indexing.value = false
+  }
+}
+
 function onDrawerReplace(text) { editorRef.value?.replaceAll(text) }
 function onDrawerAppend(text) { editorRef.value?.appendToEnd(text) }
 function onDrawerInsert(text) { editorRef.value?.insertAtCursor(text) }
@@ -301,10 +357,12 @@ function onDrawerAccept(text) { editorRef.value?.replaceSelection(text) }
       <div class="header-row">
         <h2 class="chap-title">{{ selectedChapterFullTitle }}</h2>
         <AIToolbar
+          :indexing="indexing"
           @generate="onAIGenerate"
           @continue="onAIContinue"
           @rewrite="onAIRewrite"
           @summarize="onAISummarize"
+          @index="onIndexChapter"
         />
       </div>
       <el-input

@@ -1,6 +1,7 @@
 import json
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sse_starlette.sse import EventSourceResponse
 
@@ -11,6 +12,12 @@ from app.schemas.relation import RelationCreate, RelationRead, RelationUpdate
 from app.services import analysis_service, plot_service, relation_service
 from app.services.plot_service import InvalidPlotEventError, PlotEventNotFoundError
 from app.services.relation_service import InvalidRelationError, RelationNotFoundError
+
+
+class _ExtractRequest(BaseModel):
+    """关系 / 情节抽取的可选 body:留空 = 扫全工程,给定章节 = 只扫这些章节。"""
+
+    chapter_ids: list[int] | None = None
 
 # ============ Relations ============
 
@@ -37,11 +44,15 @@ def create_relation(
 
 @relation_project_router.post("/extract")
 async def extract_relations(
-    project_id: int, db: Session = Depends(get_db)
+    project_id: int,
+    body: _ExtractRequest | None = None,
+    db: Session = Depends(get_db),
 ) -> EventSourceResponse:
+    chapter_ids = body.chapter_ids if body else None
+
     async def gen():
         try:
-            async for evt in analysis_service.extract_relations(db, project_id):
+            async for evt in analysis_service.extract_relations(db, project_id, chapter_ids):
                 yield {
                     "event": evt["event"],
                     "data": json.dumps(evt["data"], ensure_ascii=False),
@@ -95,11 +106,15 @@ def create_event(
 
 @plot_project_router.post("/extract")
 async def extract_plot(
-    project_id: int, db: Session = Depends(get_db)
+    project_id: int,
+    body: _ExtractRequest | None = None,
+    db: Session = Depends(get_db),
 ) -> EventSourceResponse:
+    chapter_ids = body.chapter_ids if body else None
+
     async def gen():
         try:
-            async for evt in analysis_service.extract_plot(db, project_id):
+            async for evt in analysis_service.extract_plot(db, project_id, chapter_ids):
                 yield {
                     "event": evt["event"],
                     "data": json.dumps(evt["data"], ensure_ascii=False),

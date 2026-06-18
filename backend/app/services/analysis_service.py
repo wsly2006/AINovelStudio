@@ -7,6 +7,7 @@ import json
 import re
 from collections.abc import AsyncGenerator
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.ai import client as ai_client
@@ -61,7 +62,7 @@ def _build_relation_messages(db, chapter: Chapter, characters: list[Character]) 
 
 
 async def extract_relations(
-    db: Session, project_id: int
+    db: Session, project_id: int, chapter_ids: list[int] | None = None
 ) -> AsyncGenerator[dict, None]:
     project = db.get(Project, project_id)
     if project is None:
@@ -73,7 +74,10 @@ async def extract_relations(
         yield {"event": "done", "data": {"total": 0, "extracted": 0, "reason": "no_characters"}}
         return
 
-    chapters = list(project.chapters)
+    stmt = select(Chapter).where(Chapter.project_id == project_id).order_by(Chapter.order_index)
+    if chapter_ids:
+        stmt = stmt.where(Chapter.id.in_(chapter_ids))
+    chapters = list(db.execute(stmt).scalars().all())
     if not chapters:
         yield {"event": "done", "data": {"total": 0, "extracted": 0}}
         return
@@ -160,13 +164,18 @@ def _build_plot_messages(db, chapter: Chapter, characters: list[Character]) -> l
     )
 
 
-async def extract_plot(db: Session, project_id: int) -> AsyncGenerator[dict, None]:
+async def extract_plot(
+    db: Session, project_id: int, chapter_ids: list[int] | None = None
+) -> AsyncGenerator[dict, None]:
     project = db.get(Project, project_id)
     if project is None:
         yield {"event": "error", "data": {"message": "工程不存在"}}
         return
 
-    chapters = list(project.chapters)
+    stmt = select(Chapter).where(Chapter.project_id == project_id).order_by(Chapter.order_index)
+    if chapter_ids:
+        stmt = stmt.where(Chapter.id.in_(chapter_ids))
+    chapters = list(db.execute(stmt).scalars().all())
     if not chapters:
         yield {"event": "done", "data": {"total": 0, "extracted": 0}}
         return
@@ -174,9 +183,11 @@ async def extract_plot(db: Session, project_id: int) -> AsyncGenerator[dict, Non
     characters = list(project.characters)
     char_ids = {c.id for c in characters}
 
-    # 全量重抽:先清空 plot_events
+    # 只清掉本次扫描范围内章节的旧事件,工程级抽取保持原有「全量重抽」语义
+    target_chapter_ids = {ch.id for ch in chapters}
     for ev in list(project.plot_events):
-        db.delete(ev)
+        if ev.chapter_id in target_chapter_ids:
+            db.delete(ev)
     db.commit()
 
     yield {"event": "start", "data": {"total": len(chapters)}}

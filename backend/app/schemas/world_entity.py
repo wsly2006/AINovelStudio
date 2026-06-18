@@ -62,7 +62,9 @@ class WorldEntityRead(WorldEntityBase):
 
 
 class WorldEntityExtractRequest(BaseModel):
-    """触发 AI 抽取。kinds 限定要抽哪几类,空表示全抽。"""
+    """触发 AI 抽取。kinds 限定要抽哪几类,空表示全抽;
+    chapter_ids 为 None 时扫全工程,给定列表时只扫这些章节(用于按本章索引)。"""
 
     kinds: list[EntityKind] | None = None
+    chapter_ids: list[int] | None = None
     mode: str = Field(default="merge", pattern="^(merge|replace)$")

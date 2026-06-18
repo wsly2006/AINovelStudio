@@ -58,7 +58,7 @@ async def extract_world(
     async def gen():
         try:
             async for evt in world_extract_service.extract_world_entities(
-                db, project_id, body.kinds, body.mode
+                db, project_id, body.kinds, body.mode, body.chapter_ids
             ):
                 yield {
                     "event": evt["event"],
