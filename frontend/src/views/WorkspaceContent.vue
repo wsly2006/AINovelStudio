@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Fold, Expand } from '@element-plus/icons-vue'
 import { useWorkspaceStore } from '../stores/workspace'
 import { useCharactersStore } from '../stores/characters'
 import { useWorldStore } from '../stores/world'
@@ -27,6 +28,23 @@ const itemsStore = useItemsStore()
 const { t } = useI18n()
 
 const editorRef = ref(null)
+// 章节侧边栏折叠状态:写正文时常常想全屏沉浸,允许把章节区收起来
+const SIDEBAR_KEY = 'workspace.chapterSidebarCollapsed'
+const sidebarCollapsed = ref(false)
+try {
+  sidebarCollapsed.value = localStorage.getItem(SIDEBAR_KEY) === '1'
+} catch {
+  /* localStorage 不可用就忽略 */
+}
+function toggleSidebar() {
+  sidebarCollapsed.value = !sidebarCollapsed.value
+  try {
+    localStorage.setItem(SIDEBAR_KEY, sidebarCollapsed.value ? '1' : '0')
+  } catch {
+    /* 同上 */
+  }
+}
+
 const drawerVisible = ref(false)
 const drawerMode = ref('generate')
 const drawerSelection = ref('')
@@ -409,8 +427,9 @@ async function onDrawerAccept(text) {
 </script>
 
 <template>
-  <aside class="sidebar">
+  <aside class="sidebar" :class="{ collapsed: sidebarCollapsed }">
     <ChapterList
+      v-if="!sidebarCollapsed"
       :chapters="store.chapters"
       :selected-id="store.selectedId"
       @select="onSelect"
@@ -420,6 +439,15 @@ async function onDrawerAccept(text) {
       @reorder="onReorder"
       @edit="onEdit"
     />
+    <button
+      v-else
+      class="sidebar-expand"
+      :title="t('workspace.expandChapterList')"
+      :aria-label="t('workspace.expandChapterList')"
+      @click="toggleSidebar"
+    >
+      <el-icon :size="16"><Expand /></el-icon>
+    </button>
   </aside>
 
   <main class="editor">
@@ -430,6 +458,15 @@ async function onDrawerAccept(text) {
 
     <div v-else class="editor-inner">
       <div class="header-row">
+        <button
+          v-if="!sidebarCollapsed"
+          class="sidebar-collapse"
+          :title="t('workspace.collapseChapterList')"
+          :aria-label="t('workspace.collapseChapterList')"
+          @click="toggleSidebar"
+        >
+          <el-icon :size="16"><Fold /></el-icon>
+        </button>
         <h2 class="chap-title">{{ selectedChapterFullTitle }}</h2>
         <AIToolbar
           :indexing="indexing"
@@ -509,6 +546,41 @@ async function onDrawerAccept(text) {
   width: 280px;
   flex-shrink: 0;
   height: 100%;
+  transition: width 0.18s ease;
+}
+.sidebar.collapsed {
+  width: 36px;
+  background: #fff;
+  border-right: 1px solid #e5e6eb;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 12px;
+}
+.sidebar-expand,
+.sidebar-collapse {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid #e5e6eb;
+  background: #fff;
+  color: #4e5969;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  padding: 0;
+}
+.sidebar-expand:hover,
+.sidebar-collapse:hover {
+  background: #ecf5ff;
+  border-color: #d9ebff;
+  color: #4080ff;
+}
+.sidebar-collapse {
+  margin-right: 4px;
+  align-self: center;
 }
 .editor {
   flex: 1;

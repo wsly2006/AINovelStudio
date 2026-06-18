@@ -273,6 +273,8 @@ export default {
     chapterPrefix: '第 {n} 章',
     chapterListTitle: '章节',
     emptyChapters: '还没有章节,点上方按钮新建',
+    collapseChapterList: '收起章节列表',
+    expandChapterList: '展开章节列表',
     selectChapterHint: '从左侧选择或新建一个章节开始创作',
     editorPlaceholder: '编辑器(Phase 3 待实装)',
     editorWillAppear: '这里将出现 Markdown 编辑器,可手写或调用 AI 生成正文。',
