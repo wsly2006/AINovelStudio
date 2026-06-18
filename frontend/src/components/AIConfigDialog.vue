@@ -256,8 +256,8 @@ watch(activeTab, () => {
     @update:model-value="emit('update:modelValue', $event)"
     :title="t('aiConfig.title')"
     width="680px"
-    v-loading="loading"
   >
+    <div v-loading="loading">
     <el-tabs v-model="activeTab" class="role-tabs">
       <el-tab-pane :label="t('aiConfig.tabWriting')" name="writing" />
       <el-tab-pane :label="t('aiConfig.tabReview')" name="review" />
@@ -353,6 +353,7 @@ watch(activeTab, () => {
         </p>
       </el-form>
     </template>
+    </div>
 
     <template #footer>
       <div class="footer">

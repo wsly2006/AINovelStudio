@@ -149,9 +149,8 @@ function insertPlaceholder(ph) {
     :title="t('prompts.title')"
     width="960px"
     top="6vh"
-    v-loading="loading"
   >
-    <div class="layout">
+    <div class="layout" v-loading="loading">
       <aside class="sidebar">
         <div v-for="g in grouped" :key="g.key" class="group">
           <div class="group-title">{{ t(g.labelKey) }}</div>
