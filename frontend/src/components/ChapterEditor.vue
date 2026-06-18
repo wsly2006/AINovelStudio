@@ -1,13 +1,17 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { Clock, DocumentAdd } from '@element-plus/icons-vue'
 import { EditorState } from '@codemirror/state'
 import { EditorView, keymap, lineNumbers, placeholder as placeholderExt } from '@codemirror/view'
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
 import { syntaxHighlighting, defaultHighlightStyle, indentOnInput } from '@codemirror/language'
 import { markdown } from '@codemirror/lang-markdown'
 import { chaptersApi } from '../api/chapters'
+import { chapterVersionsApi } from '../api/chapterVersions'
 import { useAutoSave } from '../composables/useAutoSave'
+import ChapterHistoryDialog from './ChapterHistoryDialog.vue'
 
 const props = defineProps({
   chapterId: { type: Number, required: true },
@@ -182,6 +186,54 @@ onBeforeUnmount(() => {
 })
 
 const wordCountText = computed(() => t('workspace.wordCount', { n: wordCount.value }))
+
+// 历史版本对话框
+const historyVisible = ref(false)
+const snapshotting = ref(false)
+
+// 手动快照:先 flush 一次 autosave,再让后端把当前内容存一份
+async function onManualSnapshot() {
+  if (snapshotting.value || !editingChapterId.value) return
+  let label = ''
+  try {
+    const { value } = await ElMessageBox.prompt(
+      '给这个版本起一个备注(可选,80 字以内)',
+      '保存版本',
+      {
+        confirmButtonText: '保存',
+        cancelButtonText: '取消',
+        inputValidator: (v) => (v && v.length > 80 ? '不超过 80 个字' : true),
+        inputValue: '',
+      }
+    )
+    label = (value || '').trim()
+  } catch {
+    return
+  }
+  snapshotting.value = true
+  try {
+    await flush()
+    await chapterVersionsApi.createManual(editingChapterId.value, label || null)
+    ElMessage.success('已保存版本')
+  } catch (e) {
+    ElMessage.error(e.message || '保存版本失败')
+  } finally {
+    snapshotting.value = false
+  }
+}
+
+// 历史还原后:把数据库新内容拉回来,刷新编辑器
+async function onRestored(updatedChapter) {
+  if (!view.value) return
+  const text = updatedChapter?.content || ''
+  view.value.dispatch({
+    changes: { from: 0, to: view.value.state.doc.length, insert: text },
+    selection: { anchor: 0 },
+  })
+  content.value = text
+  wordCount.value = updatedChapter?.word_count || 0
+  ElMessage.info('已还原到历史版本')
+}
 </script>
 
 <template>
@@ -190,8 +242,31 @@ const wordCountText = computed(() => t('workspace.wordCount', { n: wordCount.val
       <span :class="stateClass">{{ stateText }}</span>
       <span class="spacer" />
       <span class="words">{{ wordCountText }}</span>
+      <el-button
+        text
+        size="small"
+        :icon="DocumentAdd"
+        :loading="snapshotting"
+        @click="onManualSnapshot"
+      >
+        保存版本
+      </el-button>
+      <el-button
+        text
+        size="small"
+        :icon="Clock"
+        @click="historyVisible = true"
+      >
+        历史
+      </el-button>
     </div>
     <div class="cm-host" ref="containerEl" v-loading="loading"></div>
+
+    <ChapterHistoryDialog
+      v-model="historyVisible"
+      :chapter-id="editingChapterId"
+      @restored="onRestored"
+    />
   </div>
 </template>
 

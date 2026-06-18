@@ -14,6 +14,7 @@ import AIToolbar from '../components/AIToolbar.vue'
 import AIGenerateDrawer from '../components/AIGenerateDrawer.vue'
 import { formatChapterFullTitle } from '../composables/chapterTitle'
 import { indexChapter } from '../composables/indexChapter'
+import { chapterVersionsApi } from '../api/chapterVersions'
 
 const route = useRoute()
 const store = useWorkspaceStore()
@@ -327,10 +328,33 @@ async function onIndexChapter() {
   }
 }
 
-function onDrawerReplace(text) { editorRef.value?.replaceAll(text) }
-function onDrawerAppend(text) { editorRef.value?.appendToEnd(text) }
-function onDrawerInsert(text) { editorRef.value?.insertAtCursor(text) }
-function onDrawerAccept(text) { editorRef.value?.replaceSelection(text) }
+// AI 覆盖前先把当前内容快照一份,失败也不阻塞主流程(版本系统是兜底,不应妨碍创作)
+async function snapshotBeforeAI() {
+  const id = selectedChapter.value?.id
+  if (!id) return
+  try {
+    await chapterVersionsApi.snapshotBeforeAI(id)
+  } catch (e) {
+    console.warn('版本快照失败,跳过:', e?.message || e)
+  }
+}
+
+async function onDrawerReplace(text) {
+  await snapshotBeforeAI()
+  editorRef.value?.replaceAll(text)
+}
+async function onDrawerAppend(text) {
+  await snapshotBeforeAI()
+  editorRef.value?.appendToEnd(text)
+}
+async function onDrawerInsert(text) {
+  await snapshotBeforeAI()
+  editorRef.value?.insertAtCursor(text)
+}
+async function onDrawerAccept(text) {
+  await snapshotBeforeAI()
+  editorRef.value?.replaceSelection(text)
+}
 </script>
 
 <template>
