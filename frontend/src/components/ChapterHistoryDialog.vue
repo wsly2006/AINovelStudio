@@ -1,7 +1,10 @@
 <script setup>
 import { ref, watch, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Delete } from '@element-plus/icons-vue'
+import { diffLines } from 'diff'
 import { chapterVersionsApi } from '../api/chapterVersions'
+import { chaptersApi } from '../api/chapters'
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
@@ -14,6 +17,10 @@ const versions = ref([])
 const selected = ref(null)
 const detailContent = ref('')
 const detailLoading = ref(false)
+// 'content' | 'diff' :右侧视图模式
+const viewMode = ref('content')
+// 当前章节正文,用于"版本 vs 当前"对比
+const currentContent = ref('')
 
 const REASON_LABEL = {
   ai_overwrite: 'AI 覆盖前',
@@ -31,8 +38,13 @@ async function loadList() {
   if (!props.chapterId) return
   loading.value = true
   try {
-    versions.value = await chapterVersionsApi.list(props.chapterId)
-    selected.value = versions.value[0] || null
+    const [list, current] = await Promise.all([
+      chapterVersionsApi.list(props.chapterId),
+      chaptersApi.get(props.chapterId),
+    ])
+    versions.value = list
+    currentContent.value = current.content || ''
+    selected.value = list[0] || null
     if (selected.value) await loadDetail(selected.value.id)
   } catch (e) {
     ElMessage.error(e.message || '加载历史失败')
@@ -57,11 +69,14 @@ async function loadDetail(versionId) {
 watch(
   () => props.modelValue,
   (v) => {
-    if (v) loadList()
-    else {
+    if (v) {
+      viewMode.value = 'content'
+      loadList()
+    } else {
       versions.value = []
       selected.value = null
       detailContent.value = ''
+      currentContent.value = ''
     }
   }
 )
@@ -93,6 +108,34 @@ async function onRestore() {
   }
 }
 
+// 删除单条版本:列表小图标触发,二次确认避免误删
+async function onDelete(v, evt) {
+  evt?.stopPropagation()
+  try {
+    await ElMessageBox.confirm(
+      `删除「${REASON_LABEL[v.reason] || v.reason}${v.label ? ' · ' + v.label : ''}」?此操作不可撤销。`,
+      '删除版本',
+      { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' }
+    )
+  } catch {
+    return
+  }
+  try {
+    await chapterVersionsApi.remove(props.chapterId, v.id)
+    ElMessage.success('已删除')
+    // 重新加载列表;如果删的就是当前选中的,清掉详情
+    const wasSelected = selected.value?.id === v.id
+    versions.value = versions.value.filter((x) => x.id !== v.id)
+    if (wasSelected) {
+      selected.value = versions.value[0] || null
+      detailContent.value = ''
+      if (selected.value) await loadDetail(selected.value.id)
+    }
+  } catch (e) {
+    ElMessage.error(e.message || '删除失败')
+  }
+}
+
 function close() {
   emit('update:modelValue', false)
 }
@@ -105,6 +148,33 @@ function formatTime(s) {
 }
 
 const versionCountText = computed(() => `${versions.value.length} / 5 个版本`)
+
+// diff 行:左侧版本(detailContent) → 右侧当前(currentContent)。
+// added=当前比版本多的,removed=版本里有但当前没的。语义上读"从这个版本到现在改了什么"。
+const diffChunks = computed(() => {
+  if (viewMode.value !== 'diff') return []
+  if (!selected.value) return []
+  const parts = diffLines(detailContent.value || '', currentContent.value || '')
+  return parts.flatMap((p) => {
+    const lines = (p.value || '').split('\n')
+    // diffLines 给的每段末尾常有空字符串,过滤掉,但保留段内的真空行
+    if (lines.length > 0 && lines[lines.length - 1] === '') lines.pop()
+    return lines.map((line) => ({
+      type: p.added ? 'added' : p.removed ? 'removed' : 'context',
+      text: line,
+    }))
+  })
+})
+
+const diffSummary = computed(() => {
+  let added = 0
+  let removed = 0
+  for (const c of diffChunks.value) {
+    if (c.type === 'added') added++
+    else if (c.type === 'removed') removed++
+  }
+  return { added, removed }
+})
 </script>
 
 <template>
@@ -112,7 +182,7 @@ const versionCountText = computed(() => `${versions.value.length} / 5 个版本`
     :model-value="modelValue"
     @update:model-value="emit('update:modelValue', $event)"
     title="章节历史版本"
-    width="780px"
+    width="900px"
     :close-on-click-modal="false"
   >
     <div class="hint-bar">
@@ -137,6 +207,14 @@ const versionCountText = computed(() => `${versions.value.length} / 5 个版本`
               {{ REASON_LABEL[v.reason] || v.reason }}
             </el-tag>
             <span class="ver-time">{{ formatTime(v.created_at) }}</span>
+            <el-button
+              text
+              size="small"
+              :icon="Delete"
+              class="ver-del"
+              title="删除此版本"
+              @click="onDelete(v, $event)"
+            />
           </div>
           <div v-if="v.label" class="ver-label">{{ v.label }}</div>
           <div class="ver-meta">{{ v.word_count }} 字</div>
@@ -146,10 +224,35 @@ const versionCountText = computed(() => `${versions.value.length} / 5 个版本`
 
       <div class="right">
         <div v-if="!selected" class="empty">选择左侧版本查看内容</div>
-        <div v-else v-loading="detailLoading" class="detail">
-          <pre v-if="detailContent">{{ detailContent }}</pre>
-          <div v-else class="empty">(空内容)</div>
-        </div>
+        <template v-else>
+          <div class="right-head">
+            <el-radio-group v-model="viewMode" size="small">
+              <el-radio-button label="content">内容</el-radio-button>
+              <el-radio-button label="diff">对比当前</el-radio-button>
+            </el-radio-group>
+            <span v-if="viewMode === 'diff'" class="diff-stat">
+              <span class="stat-add">+{{ diffSummary.added }}</span>
+              <span class="stat-del">-{{ diffSummary.removed }}</span>
+            </span>
+          </div>
+
+          <div v-if="viewMode === 'content'" v-loading="detailLoading" class="detail">
+            <pre v-if="detailContent">{{ detailContent }}</pre>
+            <div v-else class="empty">(空内容)</div>
+          </div>
+
+          <div v-else class="diff-view" v-loading="detailLoading">
+            <div v-if="diffChunks.length === 0" class="empty">两份内容完全一致</div>
+            <div
+              v-for="(c, i) in diffChunks"
+              :key="i"
+              class="diff-line"
+              :class="`diff-${c.type}`"
+            >
+              <span class="diff-prefix">{{ c.type === 'added' ? '+' : c.type === 'removed' ? '-' : ' ' }}</span><span class="diff-text">{{ c.text || ' ' }}</span>
+            </div>
+          </div>
+        </template>
       </div>
     </div>
 
@@ -173,9 +276,9 @@ const versionCountText = computed(() => `${versions.value.length} / 5 个版本`
 }
 .layout {
   display: grid;
-  grid-template-columns: 260px 1fr;
+  grid-template-columns: 280px 1fr;
   gap: 12px;
-  height: 480px;
+  height: 520px;
 }
 .left {
   border: 1px solid #e5e6eb;
@@ -190,6 +293,7 @@ const versionCountText = computed(() => `${versions.value.length} / 5 个版本`
   margin-bottom: 4px;
   border: 1px solid transparent;
   transition: background 0.15s, border-color 0.15s;
+  position: relative;
 }
 .ver:hover {
   background: #f7f8fa;
@@ -201,13 +305,27 @@ const versionCountText = computed(() => `${versions.value.length} / 5 个版本`
 .ver-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 8px;
   margin-bottom: 6px;
 }
 .ver-time {
   font-size: 12px;
   color: #86909c;
   font-variant-numeric: tabular-nums;
+  flex: 1;
+}
+.ver-del {
+  opacity: 0;
+  color: #86909c !important;
+  padding: 2px !important;
+  height: auto !important;
+}
+.ver:hover .ver-del,
+.ver.active .ver-del {
+  opacity: 1;
+}
+.ver-del:hover {
+  color: #f53f3f !important;
 }
 .ver-label {
   font-size: 12px;
@@ -233,7 +351,22 @@ const versionCountText = computed(() => `${versions.value.length} / 5 个版本`
   border-radius: 8px;
   overflow: hidden;
   display: flex;
+  flex-direction: column;
 }
+.right-head {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  border-bottom: 1px solid #f2f3f5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.diff-stat {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.stat-add { color: #00b42a; margin-right: 8px; }
+.stat-del { color: #f53f3f; }
 .detail {
   flex: 1;
   overflow-y: auto;
@@ -247,6 +380,37 @@ const versionCountText = computed(() => `${versions.value.length} / 5 个版本`
   line-height: 1.7;
   font-size: 14px;
 }
+.diff-view {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+  font-family: ui-monospace, 'Cascadia Code', 'PingFang SC', 'Microsoft YaHei', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.diff-line {
+  display: flex;
+  padding: 1px 12px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+.diff-prefix {
+  flex-shrink: 0;
+  width: 16px;
+  color: #c9cdd4;
+  user-select: none;
+}
+.diff-text {
+  flex: 1;
+}
+.diff-added {
+  background: #f0fdf4;
+}
+.diff-added .diff-prefix { color: #00b42a; }
+.diff-removed {
+  background: #fef2f2;
+}
+.diff-removed .diff-prefix { color: #f53f3f; }
 .empty {
   color: #c9cdd4;
   text-align: center;

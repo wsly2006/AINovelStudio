@@ -94,3 +94,17 @@ def restore_version(
     if c.id != chapter_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="版本与章节不匹配")
     return ChapterDetail.model_validate(c)
+
+
+@router.delete("/{version_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_version(
+    chapter_id: int, version_id: int, db: Session = Depends(get_db)
+) -> None:
+    # 必须先校验所属章节,再删除,否则跨章节误删请求会先把行干掉再报 404
+    try:
+        v = chapter_version_service.get_version(db, version_id)
+    except ChapterVersionNotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="版本不存在") from e
+    if v.chapter_id != chapter_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="版本与章节不匹配")
+    chapter_version_service.delete_version(db, version_id)

@@ -13,4 +13,6 @@ export const chapterVersionsApi = {
     client.post(`/chapters/${chapterId}/versions/ai-snapshot`).then((r) => r.data),
   restore: (chapterId, versionId) =>
     client.post(`/chapters/${chapterId}/versions/${versionId}/restore`).then((r) => r.data),
+  remove: (chapterId, versionId) =>
+    client.delete(`/chapters/${chapterId}/versions/${versionId}`),
 }

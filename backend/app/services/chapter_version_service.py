@@ -120,3 +120,13 @@ def restore(db: Session, version_id: int) -> Chapter:
     db.commit()
     db.refresh(c)
     return c
+
+
+def delete_version(db: Session, version_id: int) -> ChapterVersion:
+    """删除单条版本,返回被删的实例供 API 校验所属章节。"""
+    v = db.get(ChapterVersion, version_id)
+    if v is None:
+        raise ChapterVersionNotFoundError(version_id)
+    db.delete(v)
+    db.commit()
+    return v

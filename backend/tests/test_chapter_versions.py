@@ -105,3 +105,34 @@ def test_restore_rejects_mismatched_chapter(client: TestClient) -> None:
 def test_versions_for_unknown_chapter_404(client: TestClient) -> None:
     r = client.get("/api/chapters/99999/versions")
     assert r.status_code == 404
+
+
+def test_delete_version_removes_only_that_one(client: TestClient) -> None:
+    _, cid = _make_project_with_chapter(client)
+
+    v1 = client.post(f"/api/chapters/{cid}/versions", json={"label": "v1"}).json()
+    v2 = client.post(f"/api/chapters/{cid}/versions", json={"label": "v2"}).json()
+
+    r = client.delete(f"/api/chapters/{cid}/versions/{v1['id']}")
+    assert r.status_code == 204
+
+    items = client.get(f"/api/chapters/{cid}/versions").json()
+    assert [v["id"] for v in items] == [v2["id"]]
+
+
+def test_delete_version_rejects_mismatched_chapter(client: TestClient) -> None:
+    _, c1 = _make_project_with_chapter(client)
+    _, c2 = _make_project_with_chapter(client)
+
+    snap = client.post(f"/api/chapters/{c1}/versions", json={"label": "x"}).json()
+    r = client.delete(f"/api/chapters/{c2}/versions/{snap['id']}")
+    assert r.status_code == 404
+    # 原章节下还在
+    items = client.get(f"/api/chapters/{c1}/versions").json()
+    assert len(items) == 1
+
+
+def test_delete_unknown_version_404(client: TestClient) -> None:
+    _, cid = _make_project_with_chapter(client)
+    r = client.delete(f"/api/chapters/{cid}/versions/99999")
+    assert r.status_code == 404
