@@ -1,0 +1,307 @@
+/*
+ * 皮肤系统：默认皮肤 + 高对比度皮肤
+ *
+ * 高对比度皮肤思路：
+ *   1) 覆盖 Element Plus 的 CSS 变量,所有 el-* 组件自动跟随。
+ *   2) 用 `html[data-theme="high-contrast"] .xxx` 选择器覆盖
+ *      scoped 样式中的硬编码色——前缀同时含 element + 属性选择器,
+ *      特异度高于 scoped 的 `.xxx[data-v-xxxx]`,因此能稳定生效。
+ */
+
+/* 默认皮肤(亮色,弱对比) — 与现有视觉一致,只把关键令牌抽出来。 */
+:root {
+  --app-bg: #f5f7fa;
+  --app-card-bg: #ffffff;
+  --app-border: #e5e6eb;
+  --app-text: #1f2329;
+  --app-text-muted: #86909c;
+  --app-primary: #4080ff;
+}
+
+/* 高对比度皮肤 — 纯黑文字 / 强边框 / 深饱和主色,适合长时间阅读和弱视用户。 */
+html[data-theme='high-contrast'] {
+  /* 应用自定义令牌 */
+  --app-bg: #ffffff;
+  --app-card-bg: #ffffff;
+  --app-border: #1d2129;
+  --app-text: #000000;
+  --app-text-muted: #2b2f36;
+  --app-primary: #0033cc;
+
+  /* Element Plus 主色板 */
+  --el-color-primary: #0033cc;
+  --el-color-primary-light-3: #1f4cd6;
+  --el-color-primary-light-5: #4f74e0;
+  --el-color-primary-light-7: #b8c6f1;
+  --el-color-primary-light-8: #d4def6;
+  --el-color-primary-light-9: #ebf0fb;
+  --el-color-primary-dark-2: #00248f;
+
+  --el-color-success: #006b1f;
+  --el-color-warning: #b04a00;
+  --el-color-danger: #b00020;
+  --el-color-error: #b00020;
+  --el-color-info: #2b2f36;
+
+  /* 文字色 — 全部加深一档 */
+  --el-text-color-primary: #000000;
+  --el-text-color-regular: #1d2129;
+  --el-text-color-secondary: #2b2f36;
+  --el-text-color-placeholder: #4e5969;
+  --el-text-color-disabled: #6b7280;
+
+  /* 边框 — 一律加深为近黑色 */
+  --el-border-color: #1d2129;
+  --el-border-color-light: #1d2129;
+  --el-border-color-lighter: #2b2f36;
+  --el-border-color-extra-light: #4e5969;
+  --el-border-color-darker: #000000;
+  --el-border-color-dark: #000000;
+
+  /* 填充背景 — 把 Element Plus 默认的浅灰提为白色,提高对比度 */
+  --el-fill-color-blank: #ffffff;
+  --el-fill-color: #f0f1f3;
+  --el-fill-color-light: #f5f6f7;
+  --el-fill-color-lighter: #f5f6f7;
+  --el-fill-color-extra-light: #f5f6f7;
+
+  /* 背景色 */
+  --el-bg-color: #ffffff;
+  --el-bg-color-page: #ffffff;
+  --el-bg-color-overlay: #ffffff;
+}
+
+/* ----- 全局壳层 ----- */
+html[data-theme='high-contrast'],
+html[data-theme='high-contrast'] body,
+html[data-theme='high-contrast'] #app {
+  background: var(--app-bg) !important;
+  color: var(--app-text);
+}
+
+/* ----- 工作台外壳 ----- */
+html[data-theme='high-contrast'] .workspace {
+  background: #ffffff;
+}
+html[data-theme='high-contrast'] .topbar {
+  background: #ffffff;
+  border-bottom: 2px solid #000000;
+}
+html[data-theme='high-contrast'] .topbar .title {
+  color: #000000;
+}
+html[data-theme='high-contrast'] .dropdown-hint {
+  color: #2b2f36;
+}
+html[data-theme='high-contrast'] .ai-badge {
+  background: #ffffff;
+  color: #0033cc;
+  border: 2px solid #0033cc;
+}
+html[data-theme='high-contrast'] .ai-badge:hover {
+  background: #ebf0fb;
+}
+html[data-theme='high-contrast'] .ai-badge.off {
+  background: #ffffff;
+  color: #b04a00;
+  border-color: #b04a00;
+}
+html[data-theme='high-contrast'] .ai-badge.off:hover {
+  background: #fff2e0;
+}
+
+/* ----- 左侧导航 ----- */
+html[data-theme='high-contrast'] .left-nav {
+  background: #ffffff;
+  border-right: 2px solid #000000;
+}
+html[data-theme='high-contrast'] .nav-item {
+  color: #1d2129;
+}
+html[data-theme='high-contrast'] .nav-item:hover:not(.active) {
+  background: #ebf0fb;
+}
+html[data-theme='high-contrast'] .nav-item.active {
+  background: #ebf0fb;
+  color: #0033cc;
+  box-shadow: inset 4px 0 0 0 #0033cc;
+}
+html[data-theme='high-contrast'] .nav-item.active::after {
+  background: #ebf0fb;
+}
+
+/* ----- 章节列表 ----- */
+html[data-theme='high-contrast'] .chapter-list,
+html[data-theme='high-contrast'] .chapter-item {
+  background: #ffffff;
+}
+html[data-theme='high-contrast'] .chapter-item {
+  border: 2px solid transparent;
+}
+html[data-theme='high-contrast'] .chapter-item:hover {
+  border-color: #0033cc;
+  background: #ebf0fb;
+}
+html[data-theme='high-contrast'] .chapter-item.active {
+  background: #ebf0fb;
+  color: #0033cc;
+  border-color: #0033cc;
+}
+
+/* ----- 各类卡片 / 行 ----- */
+html[data-theme='high-contrast'] .task-row,
+html[data-theme='high-contrast'] .event-card,
+html[data-theme='high-contrast'] .character-card,
+html[data-theme='high-contrast'] .recent {
+  background: #ffffff;
+  border: 2px solid #000000 !important;
+  box-shadow: none;
+}
+html[data-theme='high-contrast'] .task-row:hover,
+html[data-theme='high-contrast'] .event-card:hover,
+html[data-theme='high-contrast'] .character-card:hover {
+  border-color: #0033cc !important;
+  background: #ebf0fb;
+}
+
+/* ----- 时间线点 / 章节头 ----- */
+html[data-theme='high-contrast'] .chap-header .dot {
+  background: #0033cc;
+  box-shadow: 0 0 0 2px #000000;
+}
+html[data-theme='high-contrast'] .timeline::before {
+  background: #000000;
+}
+html[data-theme='high-contrast'] .chap-title,
+html[data-theme='high-contrast'] .ev-title,
+html[data-theme='high-contrast'] .task-title {
+  color: #000000;
+}
+
+/* ----- 状态泳道 / 状态事件 ----- */
+html[data-theme='high-contrast'] .state-lane,
+html[data-theme='high-contrast'] .snapshot {
+  background: #f5f6f7;
+  border: 2px solid #1d2129;
+}
+html[data-theme='high-contrast'] .state-pill {
+  background: #ffffff;
+  border: 2px solid #000000;
+}
+
+/* ----- 各种次级文字、提示语统一加深 ----- */
+html[data-theme='high-contrast'] .hint,
+html[data-theme='high-contrast'] .meta,
+html[data-theme='high-contrast'] .meta-key,
+html[data-theme='high-contrast'] .desc,
+html[data-theme='high-contrast'] .ev-desc,
+html[data-theme='high-contrast'] .lane-title,
+html[data-theme='high-contrast'] .snap-title,
+html[data-theme='high-contrast'] .snap-key,
+html[data-theme='high-contrast'] .progress-text {
+  color: #2b2f36;
+}
+html[data-theme='high-contrast'] .empty,
+html[data-theme='high-contrast'] .snap-none {
+  color: #4e5969;
+}
+
+/* ----- 优先级 pill ----- */
+html[data-theme='high-contrast'] .priority {
+  background: #f5f6f7;
+  color: #000000;
+  border: 1px solid #1d2129;
+}
+html[data-theme='high-contrast'] .priority[data-priority='4'] {
+  background: #ffe8cc;
+  color: #6b2c00;
+  border-color: #b04a00;
+}
+html[data-theme='high-contrast'] .priority[data-priority='5'] {
+  background: #ffd6db;
+  color: #6b0014;
+  border-color: #b00020;
+}
+
+/* ----- 任务行划线/淡化 在高对比度下也保持可读 ----- */
+html[data-theme='high-contrast'] .task-row.done,
+html[data-theme='high-contrast'] .task-row.abandoned {
+  opacity: 1;
+  background: #f5f6f7;
+}
+html[data-theme='high-contrast'] .task-row.done .task-title,
+html[data-theme='high-contrast'] .task-row.abandoned .task-title {
+  color: #4e5969;
+}
+
+/* ----- 首页 ----- */
+html[data-theme='high-contrast'] .home {
+  background: #ffffff;
+}
+html[data-theme='high-contrast'] .hero-title {
+  background: none;
+  -webkit-background-clip: border-box;
+  background-clip: border-box;
+  color: #000000;
+}
+html[data-theme='high-contrast'] .hero-tagline {
+  color: #2b2f36;
+}
+html[data-theme='high-contrast'] .cta-primary {
+  background: #0033cc;
+  color: #ffffff;
+  border: 2px solid #00248f;
+  box-shadow: none;
+}
+html[data-theme='high-contrast'] .cta-primary:hover {
+  background: #00248f;
+  box-shadow: none;
+}
+html[data-theme='high-contrast'] .cta-secondary {
+  background: #ffffff;
+  color: #000000;
+  border: 2px solid #000000;
+  box-shadow: none;
+}
+html[data-theme='high-contrast'] .cta-secondary:hover:not(:disabled) {
+  background: #ebf0fb;
+  border-color: #0033cc;
+  box-shadow: none;
+}
+
+/* ----- 问题面板(Plot 检查结果)在高对比度下提高可读 ----- */
+html[data-theme='high-contrast'] .issues {
+  background: #ffe8cc;
+  border: 2px solid #b04a00;
+}
+html[data-theme='high-contrast'] .issues-title {
+  color: #6b2c00;
+}
+
+/* ----- 主题切换按钮 ----- */
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 14px;
+  background: #f2f3f5;
+  color: #4e5969;
+  font-size: 12px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.theme-toggle:hover {
+  background: #e5e6eb;
+}
+html[data-theme='high-contrast'] .theme-toggle {
+  background: #ffffff;
+  color: #000000;
+  border: 2px solid #000000;
+}
+html[data-theme='high-contrast'] .theme-toggle:hover {
+  background: #ebf0fb;
+  border-color: #0033cc;
+}

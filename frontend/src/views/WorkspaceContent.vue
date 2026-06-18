@@ -1,0 +1,359 @@
+<script setup>
+import { computed, onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { useWorkspaceStore } from '../stores/workspace'
+import { useCharactersStore } from '../stores/characters'
+import { useWorldStore } from '../stores/world'
+import { useItemsStore } from '../stores/items'
+import ChapterList from '../components/ChapterList.vue'
+import ChapterEditor from '../components/ChapterEditor.vue'
+import ChapterCreateDialog from '../components/ChapterCreateDialog.vue'
+import AIToolbar from '../components/AIToolbar.vue'
+import AIGenerateDrawer from '../components/AIGenerateDrawer.vue'
+import { formatChapterFullTitle } from '../composables/chapterTitle'
+
+const route = useRoute()
+const store = useWorkspaceStore()
+const charactersStore = useCharactersStore()
+const worldStore = useWorldStore()
+const itemsStore = useItemsStore()
+const { t } = useI18n()
+
+const editorRef = ref(null)
+const drawerVisible = ref(false)
+const drawerMode = ref('generate')
+const drawerSelection = ref('')
+const drawerCursorText = ref('')
+
+const dialogVisible = ref(false)
+const dialogMode = ref('create') // 'create' | 'rename' | 'edit'
+const dialogOrderIndex = ref(1)
+const dialogTitle = ref('')
+const dialogSummary = ref('')
+const dialogTargetId = ref(null)
+
+const selectedChapter = computed(
+  () => store.chapters.find((c) => c.id === store.selectedId) || null
+)
+
+const selectedChapterFullTitle = computed(() =>
+  selectedChapter.value ? formatChapterFullTitle(selectedChapter.value, t) : ''
+)
+
+// 工程内的人物列表 / 世界观 / 物品(供 AI 注入多选用)
+const projectCharacters = computed(() => charactersStore.items)
+const projectWorld = computed(() => worldStore.items)
+const projectItems = computed(() => itemsStore.items)
+
+onMounted(() => {
+  const pid = Number(route.params.id)
+  if (charactersStore.projectId !== pid) {
+    charactersStore.load(pid).catch(() => {})
+  }
+  if (worldStore.projectId !== pid) {
+    worldStore.load(pid).catch(() => {})
+  }
+  if (itemsStore.projectId !== pid) {
+    itemsStore.load(pid).catch(() => {})
+  }
+})
+
+async function flushEditor() {
+  if (editorRef.value?.flush) {
+    try {
+      await editorRef.value.flush()
+    } catch {
+      /* 保存失败不阻塞跳转 */
+    }
+  }
+}
+
+async function onSelect(chapter) {
+  if (chapter.id === store.selectedId) return
+  await flushEditor()
+  store.select(chapter.id)
+}
+
+async function onCreate() {
+  await flushEditor()
+  dialogMode.value = 'create'
+  dialogOrderIndex.value = store.chapters.length + 1
+  dialogTitle.value = ''
+  dialogSummary.value = ''
+  dialogTargetId.value = null
+  dialogVisible.value = true
+}
+
+async function onRename(chapter) {
+  dialogMode.value = 'rename'
+  dialogOrderIndex.value = chapter.order_index
+  dialogTitle.value = chapter.title || ''
+  dialogSummary.value = ''
+  dialogTargetId.value = chapter.id
+  dialogVisible.value = true
+}
+
+// 双击章节卡片:与新建对话框同款,但是预填当前内容,提交后走 update
+async function onEdit(chapter) {
+  await flushEditor()
+  dialogMode.value = 'edit'
+  dialogOrderIndex.value = chapter.order_index
+  dialogTitle.value = chapter.title || ''
+  dialogSummary.value = chapter.summary || ''
+  dialogTargetId.value = chapter.id
+  dialogVisible.value = true
+}
+
+async function onDialogSubmit(payload) {
+  if (dialogMode.value === 'create') {
+    try {
+      await store.createChapter(payload)
+      ElMessage.success(t('workspace.chapterCreated'))
+    } catch (e) {
+      ElMessage.error(e.message || t('workspace.createFailed'))
+      throw e
+    }
+  } else if (dialogMode.value === 'edit') {
+    const id = dialogTargetId.value
+    if (!id) return
+    const target = store.chapters.find((c) => c.id === id)
+    if (!target) return
+    const titleSame = (target.title || '') === payload.title
+    const summarySame = (target.summary || '') === (payload.summary || '')
+    if (titleSame && summarySame) return
+    try {
+      await store.updateChapterMeta(id, payload)
+      ElMessage.success(t('workspace.chapterUpdated'))
+    } catch (e) {
+      ElMessage.error(e.message || t('workspace.updateFailed'))
+      throw e
+    }
+  } else {
+    const id = dialogTargetId.value
+    if (!id) return
+    const target = store.chapters.find((c) => c.id === id)
+    if (!target) return
+    if ((target.title || '') === payload.title) return
+    try {
+      await store.renameChapter(id, payload.title)
+      ElMessage.success(t('workspace.chapterRenamed'))
+    } catch (e) {
+      ElMessage.error(e.message || t('workspace.renameFailed'))
+      throw e
+    }
+  }
+}
+
+async function onDelete(chapter) {
+  try {
+    await ElMessageBox.confirm(
+      t('workspace.chapterDeleteConfirm', {
+        title: formatChapterFullTitle(chapter, t),
+      }),
+      t('workspace.chapterDeleteTitle'),
+      {
+        type: 'warning',
+        confirmButtonText: t('common.delete'),
+        cancelButtonText: t('common.cancel'),
+      }
+    )
+  } catch {
+    return
+  }
+  try {
+    await store.removeChapter(chapter.id)
+    ElMessage.success(t('workspace.chapterDeleted'))
+  } catch (e) {
+    ElMessage.error(e.message || t('workspace.deleteFailed'))
+  }
+}
+
+async function onReorder(newList) {
+  try {
+    await store.reorder(newList)
+  } catch (e) {
+    ElMessage.error(e.message || t('workspace.reorderFailed'))
+  }
+}
+
+function onEditorSaved(meta) {
+  store.applyContentSaved(meta.id, meta)
+}
+
+async function onAIGenerate() {
+  if (!selectedChapter.value) return
+  await flushEditor()
+  drawerMode.value = 'generate'
+  drawerVisible.value = true
+}
+
+async function onAIContinue() {
+  if (!selectedChapter.value || !editorRef.value) return
+  await flushEditor()
+  const cursorText = editorRef.value.getCursorText() || editorRef.value.getContent() || ''
+  drawerCursorText.value = cursorText.slice(-8000)
+  drawerMode.value = 'continue'
+  drawerVisible.value = true
+}
+
+async function onAIRewrite() {
+  if (!selectedChapter.value || !editorRef.value) return
+  await flushEditor()
+  const sel = editorRef.value.getSelection() || ''
+  if (!sel.trim()) {
+    ElMessage.warning(t('ai.selectionEmpty'))
+    return
+  }
+  drawerSelection.value = sel
+  drawerMode.value = 'rewrite'
+  drawerVisible.value = true
+}
+
+async function onAISummarize() {
+  if (!selectedChapter.value) return
+  await flushEditor()
+  const id = selectedChapter.value.id
+  const closeMsg = ElMessage({ type: 'info', message: t('ai.summarizing'), duration: 0 })
+  try {
+    const resp = await fetch(`/api/chapters/${id}/ai/summarize`, { method: 'POST' })
+    closeMsg.close()
+    if (!resp.ok) {
+      const data = await resp.json().catch(() => ({}))
+      ElMessage.error(`${t('ai.error')}: ${data.detail || resp.status}`)
+      return
+    }
+    const data = await resp.json()
+    const i = store.chapters.findIndex((c) => c.id === id)
+    if (i >= 0) {
+      store.chapters[i] = { ...store.chapters[i], summary: data.summary }
+    }
+    ElMessage.success(t('ai.summarized'))
+  } catch (e) {
+    closeMsg.close()
+    ElMessage.error(`${t('ai.error')}: ${e.message}`)
+  }
+}
+
+function onDrawerReplace(text) { editorRef.value?.replaceAll(text) }
+function onDrawerAppend(text) { editorRef.value?.appendToEnd(text) }
+function onDrawerInsert(text) { editorRef.value?.insertAtCursor(text) }
+function onDrawerAccept(text) { editorRef.value?.replaceSelection(text) }
+</script>
+
+<template>
+  <aside class="sidebar">
+    <ChapterList
+      :chapters="store.chapters"
+      :selected-id="store.selectedId"
+      @select="onSelect"
+      @create="onCreate"
+      @rename="onRename"
+      @delete="onDelete"
+      @reorder="onReorder"
+      @edit="onEdit"
+    />
+  </aside>
+
+  <main class="editor">
+    <div v-if="!selectedChapter" class="placeholder">
+      <div class="emoji">✍️</div>
+      <p>{{ t('workspace.selectChapterHint') }}</p>
+    </div>
+
+    <div v-else class="editor-inner">
+      <div class="header-row">
+        <h2 class="chap-title">{{ selectedChapterFullTitle }}</h2>
+        <AIToolbar
+          @generate="onAIGenerate"
+          @continue="onAIContinue"
+          @rewrite="onAIRewrite"
+          @summarize="onAISummarize"
+        />
+      </div>
+      <ChapterEditor
+        ref="editorRef"
+        :key="selectedChapter.id"
+        :chapter-id="selectedChapter.id"
+        class="editor-host"
+        @saved="onEditorSaved"
+      />
+    </div>
+  </main>
+
+  <AIGenerateDrawer
+    v-model="drawerVisible"
+    :mode="drawerMode"
+    :chapter-id="selectedChapter?.id || null"
+    :selection="drawerSelection"
+    :cursor-text="drawerCursorText"
+    :characters="projectCharacters"
+    :world-entities="projectWorld"
+    :items="projectItems"
+    :default-target-word-count="store.project?.words_per_chapter || 4000"
+    @replace="onDrawerReplace"
+    @append="onDrawerAppend"
+    @insert="onDrawerInsert"
+    @accept="onDrawerAccept"
+  />
+
+  <ChapterCreateDialog
+    v-model="dialogVisible"
+    :mode="dialogMode"
+    :order-index="dialogOrderIndex"
+    :title="dialogTitle"
+    :summary="dialogSummary"
+    @submit="onDialogSubmit"
+  />
+</template>
+
+<style scoped>
+.sidebar {
+  width: 280px;
+  flex-shrink: 0;
+  height: 100%;
+}
+.editor {
+  flex: 1;
+  overflow: hidden;
+  padding: 16px 24px;
+}
+.placeholder {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #86909c;
+}
+.placeholder .emoji {
+  font-size: 56px;
+  margin-bottom: 12px;
+  opacity: 0.6;
+}
+.editor-inner {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-shrink: 0;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.chap-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  align-self: center;
+}
+.editor-host {
+  flex: 1;
+  min-height: 0;
+}
+</style>
