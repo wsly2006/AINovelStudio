@@ -36,6 +36,10 @@ _WRITING_SYSTEM = (
 
 _GEN_USER = """工程信息:{{project_info}}
 
+{{synopsis_block}}
+
+{{threads_block}}
+
 前序章节梗概:
 {{previous_summary}}
 
@@ -51,11 +55,15 @@ _GEN_USER = """工程信息:{{project_info}}
 
 现在请创作{{chapter_label}}。
 目标字数:约 {{target_word_count}} 字。
-请承接上一章结尾,自然推进情节。{{extra_instruction_block}}"""
+请承接上一章结尾,自然推进情节,贴合总纲走向、推动主线进展。{{extra_instruction_block}}"""
 
 # ============ 2. 续写 ============
 
 _CONT_USER = """工程信息:{{project_info}}
+
+{{synopsis_block}}
+
+{{threads_block}}
 
 前序章节梗概:
 {{previous_summary}}
@@ -82,6 +90,10 @@ _CONT_USER = """工程信息:{{project_info}}
 # ============ 3. 改写选段 ============
 
 _REWRITE_USER = """{{project_info_block}}
+
+{{synopsis_block}}
+
+{{threads_block}}
 
 {{characters_block}}
 
@@ -241,6 +253,37 @@ _DESC_USER = """请为下面这本小说写一段中文简介。
 - 与所给频道 / 题材 / 标签匹配,避免空话套话
 - 不要带书名号、不要「本书讲述」之类的元叙述
 - 严禁输出解释或前后缀文字,仅输出简介正文。"""
+
+# ============ 5d. AI 草拟主线 ============
+
+_SUGGEST_THREADS_SYSTEM = (
+    "你是网络小说的资深策划编辑,擅长把题材 / 简介 / 总纲拆解成 3-5 条贯穿全书的主线。"
+    "严格输出 JSON,禁止额外解释或 Markdown 代码块。"
+)
+
+_SUGGEST_THREADS_USER = """请基于以下设定为本书草拟 3-5 条主线(故事线),覆盖明线 + 暗线。
+
+设定信息:
+{{project_meta}}
+
+要求:
+- 至少含一条情感 / 人物成长线,一条核心冲突线;若题材合适再加暗线 / 世界观线
+- 每条主线之间应有差异,不要互相重复
+- description:这条线讲什么(40-100 字)
+- planned_arc:起承转合各阶段的关键节点(60-200 字),自由格式但要包含「如何收束」
+- importance:1-5,5 表示主线中的主线
+
+输出 JSON,严格遵循以下结构:
+{
+  "threads": [
+    {
+      "title": "主线名(8-20 字内)",
+      "description": "这条线讲什么",
+      "planned_arc": "起承转合,含结局",
+      "importance": 1-5 的整数
+    }
+  ]
+}"""
 
 # ============ 6. 人物抽取 ============
 
@@ -429,7 +472,8 @@ PROMPTS: tuple[PromptDef, ...] = (
         default_system=_WRITING_SYSTEM,
         default_user=_GEN_USER,
         placeholders=(
-            "project_info", "previous_summary", "characters_block", "world_block",
+            "project_info", "synopsis_block", "threads_block",
+            "previous_summary", "characters_block", "world_block",
             "items_block", "events_block", "tasks_block", "chapter_label",
             "target_word_count", "extra_instruction_block",
         ),
@@ -442,7 +486,8 @@ PROMPTS: tuple[PromptDef, ...] = (
         default_system=_WRITING_SYSTEM,
         default_user=_CONT_USER,
         placeholders=(
-            "project_info", "previous_summary", "characters_block", "world_block",
+            "project_info", "synopsis_block", "threads_block",
+            "previous_summary", "characters_block", "world_block",
             "items_block", "events_block", "tasks_block", "chapter_label",
             "cursor_text", "extra_instruction_block",
         ),
@@ -454,7 +499,10 @@ PROMPTS: tuple[PromptDef, ...] = (
         description="编辑器右键「改写」选中文字。",
         default_system=_WRITING_SYSTEM,
         default_user=_REWRITE_USER,
-        placeholders=("project_info_block", "characters_block", "instruction", "selection"),
+        placeholders=(
+            "project_info_block", "synopsis_block", "threads_block",
+            "characters_block", "instruction", "selection",
+        ),
     ),
     PromptDef(
         key="chapter.summarize",
@@ -509,6 +557,15 @@ PROMPTS: tuple[PromptDef, ...] = (
         default_system=_DESC_SYSTEM,
         default_user=_DESC_USER,
         placeholders=("outline_meta",),
+    ),
+    PromptDef(
+        key="project.suggest_threads",
+        name="AI 草拟主线",
+        group="outline",
+        description="基于工程总纲 / 简介,草拟 3-5 条贯穿全书的主线(明线 + 暗线)。",
+        default_system=_SUGGEST_THREADS_SYSTEM,
+        default_user=_SUGGEST_THREADS_USER,
+        placeholders=("project_meta",),
     ),
     PromptDef(
         key="extract.character",

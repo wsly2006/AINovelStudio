@@ -28,6 +28,7 @@ def _build_read(
             "id": p.id,
             "name": p.name,
             "description": p.description,
+            "synopsis": p.synopsis,
             "channel": p.channel,
             "genre": p.genre,
             "tags": list(p.tags or []),
@@ -113,6 +114,7 @@ def create_project(db: Session, payload: ProjectCreate) -> ProjectRead:
     p = Project(
         name=payload.name,
         description=payload.description,
+        synopsis=payload.synopsis,
         channel=payload.channel,
         genre=payload.genre,
         tags=list(payload.tags or []),

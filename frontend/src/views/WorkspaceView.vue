@@ -32,6 +32,28 @@ const aiConfigVisible = ref(false)
 const promptManagerVisible = ref(false)
 const projectEditVisible = ref(false)
 
+// 总纲提醒小横幅:工程没填 synopsis 时露一次,用户点过「不再提示」就 localStorage 标记
+const synopsisDismissed = ref(false)
+const showSynopsisBanner = computed(
+  () =>
+    !synopsisDismissed.value
+    && store.project
+    && !(store.project.synopsis && store.project.synopsis.trim())
+)
+function dismissBanner() {
+  synopsisDismissed.value = true
+  try {
+    localStorage.setItem(`synopsisBannerDismissed:${projectId.value}`, '1')
+  } catch {
+    /* localStorage 不可用就只在本会话内隐藏 */
+  }
+}
+function openSynopsisFromBanner() {
+  projectEditVisible.value = true
+  // 不持久化,只是关掉这次显示;用户填了 synopsis 后下次刷新自动消失
+  synopsisDismissed.value = true
+}
+
 const isHC = computed(() => theme.current === 'high-contrast')
 const themeToggleTitle = computed(() =>
   isHC.value ? t('theme.switchToDefault') : t('theme.switchToHighContrast')
@@ -54,6 +76,13 @@ async function load() {
     // 进阶启用时预拉一下阶梯,方便人物编辑器和左侧导航使用
     if (store.project?.progression_enabled) {
       laddersStore.load(projectId.value).catch(() => {})
+    }
+    // 切工程时检查这个工程是否已经被「不再提示」过
+    try {
+      synopsisDismissed.value =
+        localStorage.getItem(`synopsisBannerDismissed:${projectId.value}`) === '1'
+    } catch {
+      synopsisDismissed.value = false
     }
   } catch (e) {
     ElMessage.error(e.message || t('workspace.loadFailed'))
@@ -179,6 +208,15 @@ function onSettings(cmd) {
     <div class="body">
       <WorkspaceLeftNav :project-id="props.id" />
       <div class="page">
+        <div v-if="showSynopsisBanner" class="synopsis-banner">
+          <span class="banner-text">{{ t('synopsisBanner.text') }}</span>
+          <el-button text type="primary" size="small" @click="openSynopsisFromBanner">
+            {{ t('synopsisBanner.actionFill') }}
+          </el-button>
+          <el-button text size="small" @click="dismissBanner">
+            {{ t('synopsisBanner.actionDismiss') }}
+          </el-button>
+        </div>
         <router-view />
       </div>
     </div>
@@ -290,7 +328,22 @@ function onSettings(cmd) {
 .page {
   flex: 1;
   display: flex;
+  flex-direction: column;
   overflow: hidden;
   min-width: 0;
+}
+.synopsis-banner {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  background: #fff7e6;
+  border-bottom: 1px solid #ffd591;
+  font-size: 12px;
+  color: #d46b08;
+}
+.banner-text {
+  flex: 1;
 }
 </style>

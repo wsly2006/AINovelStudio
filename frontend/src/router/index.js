@@ -43,6 +43,11 @@ const routes = [
         component: () => import('../views/WorkspacePlot.vue'),
       },
       {
+        path: 'threads',
+        name: 'workspace-threads',
+        component: () => import('../views/WorkspaceThreads.vue'),
+      },
+      {
         path: 'world',
         name: 'workspace-world',
         component: () => import('../views/WorkspaceWorld.vue'),

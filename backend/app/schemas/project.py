@@ -6,6 +6,8 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 class ProjectBase(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     description: str | None = Field(default=None, max_length=2000)
+    # 总纲:长篇大纲,包含结局走向。注入每次 AI 生成的 prompt。
+    synopsis: str | None = Field(default=None, max_length=20000)
     # 频道:male/female/danmei/yuri/general,可空
     channel: str | None = Field(default=None, max_length=20)
     genre: str | None = Field(default=None, max_length=40)
@@ -51,6 +53,7 @@ class ProjectCreate(ProjectBase):
 class ProjectUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=120)
     description: str | None = Field(default=None, max_length=2000)
+    synopsis: str | None = Field(default=None, max_length=20000)
     channel: str | None = Field(default=None, max_length=20)
     genre: str | None = Field(default=None, max_length=40)
     tags: list[str] | None = None

@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from app.models.item import Item
     from app.models.ladder import Ladder
     from app.models.plot_event import PlotEvent
+    from app.models.plot_thread import PlotThread
     from app.models.relation import CharacterRelation
     from app.models.task import Task
     from app.models.world_entity import WorldEntity
@@ -24,6 +25,9 @@ class Project(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # 总纲:长篇大纲,包含结局走向。注入每次生成 / 续写 / 改写的 prompt,
+    # 让 AI 写每一章时都知道整本书该往哪走。和 description(短简介)不同。
+    synopsis: Mapped[str | None] = mapped_column(Text, nullable=True)
     # 频道:male / female / danmei / yuri / general,决定写作视角与读者预期
     channel: Mapped[str | None] = mapped_column(String(20), nullable=True)
     genre: Mapped[str | None] = mapped_column(String(40), nullable=True)
@@ -70,6 +74,14 @@ class Project(Base):
         back_populates="project",
         cascade="all, delete-orphan",
         passive_deletes=True,
+    )
+
+    plot_threads: Mapped[list["PlotThread"]] = relationship(
+        "PlotThread",
+        back_populates="project",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        order_by="PlotThread.order_index, PlotThread.id",
     )
 
     world_entities: Mapped[list["WorldEntity"]] = relationship(

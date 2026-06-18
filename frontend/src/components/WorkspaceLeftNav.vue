@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { Document, User, Share, Reading, Compass, TrendCharts, Flag, Box } from '@element-plus/icons-vue'
+import { Document, User, Share, Reading, Compass, TrendCharts, Flag, Box, Connection } from '@element-plus/icons-vue'
 import { useWorkspaceStore } from '../stores/workspace'
 
 const props = defineProps({
@@ -20,6 +20,7 @@ const NAV_ITEMS = computed(() => {
     { name: 'workspace-characters', labelKey: 'workspaceTab.characters', icon: User },
     { name: 'workspace-items', labelKey: 'workspaceTab.items', icon: Box },
     { name: 'workspace-relations', labelKey: 'workspaceTab.relations', icon: Share },
+    { name: 'workspace-threads', labelKey: 'workspaceTab.threads', icon: Connection },
     { name: 'workspace-plot', labelKey: 'workspaceTab.plot', icon: Reading },
     { name: 'workspace-world', labelKey: 'workspaceTab.world', icon: Compass },
     { name: 'workspace-tasks', labelKey: 'workspaceTab.tasks', icon: Flag },

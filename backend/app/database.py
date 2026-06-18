@@ -48,6 +48,7 @@ def init_db() -> None:
     from app.models import item as _item  # noqa: F401
     from app.models import ladder as _ladder  # noqa: F401
     from app.models import plot_event as _plot_event  # noqa: F401
+    from app.models import plot_thread as _plot_thread  # noqa: F401
     from app.models import project as _project  # noqa: F401
     from app.models import prompt_template as _prompt_template  # noqa: F401
     from app.models import relation as _relation  # noqa: F401
@@ -68,6 +69,7 @@ _NEW_COLUMNS: list[tuple[str, str, str]] = [
     ("projects", "channel", "VARCHAR(20)"),
     ("projects", "tags", "JSON NOT NULL DEFAULT '[]'"),
     ("projects", "words_per_chapter", "INTEGER NOT NULL DEFAULT 4000"),
+    ("projects", "synopsis", "TEXT"),
     # 审稿模型(可选,留空回落写作模型)
     ("ai_settings", "review_provider", "VARCHAR(20)"),
     ("ai_settings", "review_model", "VARCHAR(120)"),

@@ -13,7 +13,7 @@ from app.models.item import Item
 from app.models.ladder import Ladder
 from app.models.plot_event import PlotEvent
 from app.models.world_entity import WorldEntity
-from app.services import state_event_service, task_service
+from app.services import plot_thread_service, state_event_service, task_service
 from app.services.chapter_service import ChapterNotFoundError
 
 # 反向注入时,最近事件取多少个(按章节顺序倒数)
@@ -169,6 +169,7 @@ async def stream_generate(
     active_tasks = task_service.list_active_for_characters(
         db, chapter.project_id, [c.id for c in characters]
     )
+    threads = plot_thread_service.list_active_threads_for_prompt(db, chapter.project_id)
     messages = prompts.build_generate_messages(
         chapter.project,
         chapter,
@@ -181,6 +182,7 @@ async def stream_generate(
         items=items,
         snapshots_by_id=snapshots,
         active_tasks=active_tasks,
+        plot_threads=threads,
         db=db,
     )
     async for delta in ai_client.stream_chat(
@@ -208,6 +210,7 @@ async def stream_continue(
     active_tasks = task_service.list_active_for_characters(
         db, chapter.project_id, [c.id for c in characters]
     )
+    threads = plot_thread_service.list_active_threads_for_prompt(db, chapter.project_id)
     messages = prompts.build_continue_messages(
         chapter.project,
         chapter,
@@ -220,6 +223,7 @@ async def stream_continue(
         items=items,
         snapshots_by_id=snapshots,
         active_tasks=active_tasks,
+        plot_threads=threads,
         db=db,
     )
     async for delta in ai_client.stream_chat(
@@ -240,11 +244,13 @@ async def stream_rewrite(
     if chapter is None:
         raise ChapterNotFoundError(chapter_id)
     characters = _load_characters(db, chapter.project_id, character_ids)
+    threads = plot_thread_service.list_active_threads_for_prompt(db, chapter.project_id)
     messages = prompts.build_rewrite_messages(
         selection=selection,
         instruction=instruction,
         project=chapter.project,
         characters=characters,
+        plot_threads=threads,
         db=db,
     )
     async for delta in ai_client.stream_chat(

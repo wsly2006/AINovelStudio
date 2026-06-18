@@ -8,6 +8,7 @@ from app.models.chapter import Chapter
 from app.models.character import Character
 from app.models.item import Item
 from app.models.plot_event import PlotEvent
+from app.models.plot_thread import PlotThread
 from app.models.project import Project
 from app.models.task import Task
 from app.models.world_entity import WorldEntity
@@ -27,6 +28,44 @@ def _project_context(project: Project) -> str:
     if project.description:
         parts.append(f"简介:{project.description}")
     return " / ".join(parts)
+
+
+def _synopsis_context(project: Project) -> str:
+    """项目总纲块。AI 写每一章都要看到「整本书该走向哪里」,这是最强的全局锚。"""
+    text = (project.synopsis or "").strip()
+    if not text:
+        return ""
+    return f"故事总纲(贯穿全书的走向与结局,本章不应偏离此主线):\n{text}"
+
+
+_THREAD_STATUS_LABEL = {
+    "planning": "规划中",
+    "active": "进行中",
+    "resolved": "已收束",
+    "abandoned": "已废弃",
+}
+
+
+def _threads_context(threads: list[PlotThread]) -> str:
+    """主线状态块。只列 planning + active,已收 / 废弃不再喂回去。"""
+    if not threads:
+        return ""
+    lines = [
+        "主线状态(本章应推进其中至少一条;已规划但未启动的伏笔注意按计划埋点):"
+    ]
+    for t in threads:
+        label = _THREAD_STATUS_LABEL.get(t.status, t.status)
+        head = f"【{label}】《{t.title}》"
+        if t.importance and t.importance >= 4:
+            head += "★"
+        bits = []
+        if t.description:
+            bits.append(t.description.strip())
+        if t.planned_arc:
+            bits.append(f"走向:{t.planned_arc.strip()}")
+        body = " / ".join(bits)
+        lines.append(f"- {head}{ '。' + body if body else '' }")
+    return "\n".join(lines)
 
 
 def _chapter_label(chapter: Chapter) -> str:
@@ -195,11 +234,14 @@ def build_generate_messages(
     items: list[Item] | None = None,
     snapshots_by_id: dict[int, dict] | None = None,
     active_tasks: list[Task] | None = None,
+    plot_threads: list[PlotThread] | None = None,
     db=None,
 ) -> list[dict]:
     char_names = {c.id: c.name for c in (characters or [])}
     values = {
         "project_info": _project_context(project),
+        "synopsis_block": _synopsis_context(project),
+        "threads_block": _threads_context(plot_threads or []),
         "previous_summary": _previous_chapters_context(previous, chapter.id),
         "characters_block": _characters_context(characters or [], snapshots_by_id),
         "world_block": _world_context(world_entities or []),
@@ -226,11 +268,14 @@ def build_continue_messages(
     items: list[Item] | None = None,
     snapshots_by_id: dict[int, dict] | None = None,
     active_tasks: list[Task] | None = None,
+    plot_threads: list[PlotThread] | None = None,
     db=None,
 ) -> list[dict]:
     char_names = {c.id: c.name for c in (characters or [])}
     values = {
         "project_info": _project_context(project),
+        "synopsis_block": _synopsis_context(project),
+        "threads_block": _threads_context(plot_threads or []),
         "previous_summary": _previous_chapters_context(previous, chapter.id),
         "characters_block": _characters_context(characters or [], snapshots_by_id),
         "world_block": _world_context(world_entities or []),
@@ -250,13 +295,17 @@ def build_rewrite_messages(
     instruction: str,
     project: Project | None = None,
     characters: list[Character] | None = None,
+    plot_threads: list[PlotThread] | None = None,
     db=None,
 ) -> list[dict]:
     project_info_block = (
         f"作品上下文:{_project_context(project)}" if project else ""
     )
+    synopsis_block = _synopsis_context(project) if project else ""
     values = {
         "project_info_block": project_info_block,
+        "synopsis_block": synopsis_block,
+        "threads_block": _threads_context(plot_threads or []),
         "characters_block": _characters_context(characters or []),
         "instruction": instruction.strip(),
         "selection": selection,

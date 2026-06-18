@@ -41,6 +41,7 @@ const genreOptions = computed(() =>
 const form = ref({
   name: '',
   description: '',
+  synopsis: '',
   channel: 'general',
   genre: '',
   tags: [],
@@ -66,6 +67,7 @@ watch(
     form.value = {
       name: project.name || '',
       description: project.description || '',
+      synopsis: project.synopsis || '',
       channel: project.channel || 'general',
       genre: project.genre || '',
       tags: Array.isArray(project.tags) ? project.tags.slice() : [],
@@ -144,6 +146,7 @@ async function onSubmit() {
       const payload = {
         name: form.value.name.trim(),
         description: form.value.description?.trim() || null,
+        synopsis: form.value.synopsis?.trim() || null,
         channel: form.value.channel || null,
         genre: form.value.genre || null,
         tags: form.value.tags,
@@ -227,6 +230,19 @@ async function onSubmit() {
             {{ t('projectDialog.aiSuggestDesc') }}
           </el-button>
         </div>
+      </el-form-item>
+
+      <el-form-item :label="t('projectEdit.synopsisLabel')">
+        <el-input
+          v-model="form.synopsis"
+          type="textarea"
+          :autosize="{ minRows: 6, maxRows: 16 }"
+          :placeholder="t('projectEdit.synopsisPlaceholder')"
+          maxlength="20000"
+          show-word-limit
+          resize="vertical"
+        />
+        <div class="hint">{{ t('projectEdit.synopsisHint') }}</div>
       </el-form-item>
 
       <el-form-item :label="t('projectDialog.channelLabel')">

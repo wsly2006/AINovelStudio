@@ -236,6 +236,9 @@ export default {
     title: '编辑工程',
     wordsPerChapterLabel: '每章字数',
     wordsPerChapterHint: '影响「生成本章」抽屉的默认目标字数,可随时调整',
+    synopsisLabel: '总纲',
+    synopsisPlaceholder: '写下整本书的走向 + 结局。AI 写每一章都会读它,知道该往哪写。可空着先写,后面随时补。',
+    synopsisHint: '与简介不同:简介是给读者看的钩子,总纲是给 AI 看的「全书地图」,越具体 AI 越不会跑偏',
   },
 
   chapterDialog: {
@@ -374,9 +377,16 @@ export default {
     items: '物品',
     relations: '关系',
     plot: '情节',
+    threads: '主线',
     world: '世界观',
     progression: '进阶',
     tasks: '任务',
+  },
+
+  synopsisBanner: {
+    text: '补一份「总纲」,AI 写每一章都会读它,知道整本书要走向哪里 →',
+    actionFill: '现在去填',
+    actionDismiss: '不再提示',
   },
 
   aiConfig: {
@@ -505,6 +515,33 @@ export default {
     issuesFound: '发现 {n} 个问题',
     issueRelatedEvents: '相关事件',
     issueRelatedChars: '相关人物',
+  },
+
+  threads: {
+    pageTitle: '主线',
+    pageHint: '声明本书的几条主要故事线。AI 生成 / 续写时只看「规划中」和「进行中」的主线,知道该往哪推进。',
+    newThread: '新建主线',
+    aiSuggest: 'AI 草拟主线',
+    aiSuggestNoSynopsis: '请先在工程编辑里填写「总纲」或「简介」,AI 才能据此草拟主线',
+    aiSuggestSuccess: 'AI 已生成 {n} 条主线',
+    aiSuggestFailed: '草拟主线失败',
+    empty: '还没有主线。点「新建」或让「AI 草拟」按设定生成几条。',
+    titleLabel: '主线名',
+    titlePlaceholder: '例如:男主复仇线 / 师徒情谊线',
+    descLabel: '简述',
+    descPlaceholder: '一句话讲清这条线讲什么(40-100 字)',
+    arcLabel: '走向',
+    arcPlaceholder: '起承转合各阶段的关键节点 + 如何收束(60-200 字),自由格式',
+    statusLabel: '状态',
+    statusPlanning: '规划中',
+    statusActive: '进行中',
+    statusResolved: '已收束',
+    statusAbandoned: '已废弃',
+    importanceLabel: '重要度',
+    deleteTitle: '删除主线',
+    deleteConfirm: '确定删除这条主线?此操作不可撤销。',
+    saved: '已保存',
+    deleted: '已删除',
   },
 
   world: {

@@ -15,6 +15,7 @@ from app.api import (
     health,
     items,
     ladders,
+    plot_threads,
     projects,
     prompts,
     state_events,
@@ -77,6 +78,8 @@ app.include_router(analysis.relation_project_router)
 app.include_router(analysis.relation_router)
 app.include_router(analysis.plot_project_router)
 app.include_router(analysis.plot_router)
+app.include_router(plot_threads.project_router)
+app.include_router(plot_threads.thread_router)
 app.include_router(world.project_router)
 app.include_router(world.entity_router)
 app.include_router(items.project_router)
