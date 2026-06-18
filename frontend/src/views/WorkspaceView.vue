@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
-import { ArrowLeft, Setting, Download, ArrowDown, Sunny, Moon, ChatLineRound, DataLine } from '@element-plus/icons-vue'
+import { ArrowLeft, Setting, Download, ArrowDown, Sunny, Moon, ChatLineRound, DataLine, Tools } from '@element-plus/icons-vue'
 import { useWorkspaceStore } from '../stores/workspace'
 import { useCharactersStore } from '../stores/characters'
 import { useWorldStore } from '../stores/world'
@@ -81,6 +81,13 @@ function onExport(kind) {
   const url = `/api/projects/${projectId.value}/export.${kind}`
   window.open(url, '_blank')
 }
+
+// 系统设置下拉菜单:把模型/提示词/用量统计三个入口聚合,顶栏更干净
+function onSettings(cmd) {
+  if (cmd === 'ai') aiConfigVisible.value = true
+  else if (cmd === 'prompts') promptManagerVisible.value = true
+  else if (cmd === 'stats') router.push('/stats/tokens')
+}
 </script>
 
 <template>
@@ -114,13 +121,18 @@ function onExport(kind) {
         </template>
       </el-dropdown>
 
-      <el-button :icon="ChatLineRound" @click="promptManagerVisible = true">
-        {{ t('prompts.button') }}
-      </el-button>
-
-      <el-button :icon="DataLine" @click="router.push('/stats/tokens')">
-        用量统计
-      </el-button>
+      <el-dropdown trigger="click" @command="onSettings">
+        <el-button :icon="Tools">
+          系统设置<el-icon class="el-icon--right"><ArrowDown /></el-icon>
+        </el-button>
+        <template #dropdown>
+          <el-dropdown-menu>
+            <el-dropdown-item command="ai" :icon="Setting">模型设置</el-dropdown-item>
+            <el-dropdown-item command="prompts" :icon="ChatLineRound">提示词管理</el-dropdown-item>
+            <el-dropdown-item command="stats" :icon="DataLine" divided>用量统计</el-dropdown-item>
+          </el-dropdown-menu>
+        </template>
+      </el-dropdown>
 
       <button
         class="ai-badge"
