@@ -205,18 +205,19 @@ function onSettings(cmd) {
       </button>
     </header>
 
+    <div v-if="showSynopsisBanner" class="synopsis-banner">
+      <span class="banner-text">{{ t('synopsisBanner.text') }}</span>
+      <el-button text type="primary" size="small" @click="openSynopsisFromBanner">
+        {{ t('synopsisBanner.actionFill') }}
+      </el-button>
+      <el-button text size="small" @click="dismissBanner">
+        {{ t('synopsisBanner.actionDismiss') }}
+      </el-button>
+    </div>
+
     <div class="body">
       <WorkspaceLeftNav :project-id="props.id" />
       <div class="page">
-        <div v-if="showSynopsisBanner" class="synopsis-banner">
-          <span class="banner-text">{{ t('synopsisBanner.text') }}</span>
-          <el-button text type="primary" size="small" @click="openSynopsisFromBanner">
-            {{ t('synopsisBanner.actionFill') }}
-          </el-button>
-          <el-button text size="small" @click="dismissBanner">
-            {{ t('synopsisBanner.actionDismiss') }}
-          </el-button>
-        </div>
         <router-view />
       </div>
     </div>
@@ -328,7 +329,6 @@ function onSettings(cmd) {
 .page {
   flex: 1;
   display: flex;
-  flex-direction: column;
   overflow: hidden;
   min-width: 0;
 }
