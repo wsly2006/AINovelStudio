@@ -46,6 +46,20 @@ class ChapterBeat(BaseModel):
         return out
 
 
+BeatAlignmentStatus = Literal["covered", "partial", "missing"]
+
+
+class BeatAlignmentItem(BaseModel):
+    """单个节拍的对账结果。"""
+
+    beat_index: int = Field(ge=0)
+    status: BeatAlignmentStatus
+    # AI 认为对应的事件 ids(可空,missing 时通常为空)
+    matched_event_ids: list[int] = Field(default_factory=list)
+    # 30-100 字简评:为什么 partial / missing,或哪几个事件支撑了 covered
+    note: str | None = Field(default=None, max_length=400)
+
+
 class ChapterCreate(BaseModel):
     title: str = Field(default="", max_length=200)
     summary: str | None = Field(default=None, max_length=4000)
@@ -106,6 +120,7 @@ class ChapterDetail(ChapterListItem):
 
     content: str
     beats: list[ChapterBeat] | None = None
+    beats_alignment: list[BeatAlignmentItem] | None = None
 
 
 class ChapterReorder(BaseModel):
@@ -135,3 +150,12 @@ class SuggestBeatsRequest(BaseModel):
 
 class SuggestBeatsResponse(BaseModel):
     beats: list[ChapterBeat]
+
+
+class BeatsAlignmentResponse(BaseModel):
+    """对账接口返回:每个节拍的覆盖状态 + 整体计数。"""
+
+    items: list[BeatAlignmentItem]
+    covered: int
+    partial: int
+    missing: int

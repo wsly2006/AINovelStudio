@@ -134,6 +134,9 @@ def update_chapter(
         raise ChapterNotFoundError(chapter_id)
 
     data = payload.model_dump(exclude_unset=True)
+    # 节拍变了 → 旧的对账结果不再可信,一并清掉
+    if "beats" in data and data["beats"] != (c.beats or None):
+        c.beats_alignment = None
     for k, v in data.items():
         setattr(c, k, v)
     db.commit()

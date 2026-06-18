@@ -25,4 +25,10 @@ export const chaptersApi = {
     client
       .post(`/chapters/${chapterId}/auto-index`, {}, { timeout: 90000 })
       .then((r) => r.data),
+  // 节拍-事件对账:写完 + 索引后调,逐拍判断 covered/partial/missing,
+  // 结果落 chapter.beats_alignment。
+  checkBeats: (chapterId) =>
+    client
+      .post(`/chapters/${chapterId}/ai/check-beats`, {}, { timeout: 90000 })
+      .then((r) => r.data),
 }

@@ -40,6 +40,10 @@ class Chapter(Base):
     # 章节节拍:写正文前的「本章会发生什么」清单,数组形状 [{title, detail, thread_titles}]
     # 旧章节 / 未列节拍的为 null,UI 显示「本章未列节拍」
     beats: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    # 节拍-事件对账结果:写完后让 AI 判断每个节拍是否被实际事件覆盖。
+    # 形状 [{beat_index, status: 'covered'|'partial'|'missing', matched, note}]
+    # 节拍变化或重新生成时清空(与 beats 不一致时按未对账处理)
+    beats_alignment: Mapped[list | None] = mapped_column(JSON, nullable=True)
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="draft")
     word_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 

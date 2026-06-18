@@ -51,6 +51,7 @@ const styleVisible = ref(false)
 // 节拍对话框 + 当前章节的最新节拍。打开抽屉/对话框前实时拉,免得改了章节后用旧值
 const beatsDialogVisible = ref(false)
 const currentChapterBeats = ref([])
+const currentChapterAlignment = ref([])
 
 // 工程主线列表(供节拍编辑里选「推进哪条线」)
 const projectThreads = ref([])
@@ -123,18 +124,23 @@ async function refreshThreads(pid) {
   }
 }
 
-// 打开生成抽屉 / 节拍对话框前,先拉一次章节详情拿最新 beats
+// 打开生成抽屉 / 节拍对话框前,先拉一次章节详情拿最新 beats + 对账结果
 async function fetchCurrentBeats() {
   const id = selectedChapter.value?.id
   if (!id) {
     currentChapterBeats.value = []
+    currentChapterAlignment.value = []
     return
   }
   try {
     const detail = await chaptersApi.get(id)
     currentChapterBeats.value = Array.isArray(detail.beats) ? detail.beats : []
+    currentChapterAlignment.value = Array.isArray(detail.beats_alignment)
+      ? detail.beats_alignment
+      : []
   } catch {
     currentChapterBeats.value = []
+    currentChapterAlignment.value = []
   }
 }
 
@@ -277,10 +283,11 @@ async function onAIBeats() {
   beatsDialogVisible.value = true
 }
 
-function onBeatsSaved({ chapterId, beats }) {
-  // 同步到本地缓存,免得抽屉再次打开时还是旧值
+function onBeatsSaved({ chapterId, beats, beats_alignment }) {
+  // 同步到本地缓存,免得抽屉再次打开时还是旧值。改节拍会让对账结果失效,这里也跟着清掉
   if (selectedChapter.value?.id === chapterId) {
     currentChapterBeats.value = Array.isArray(beats) ? beats : []
+    currentChapterAlignment.value = Array.isArray(beats_alignment) ? beats_alignment : []
   }
 }
 
@@ -460,19 +467,30 @@ async function onDrawerAccept(text) {
   await autoIndexAfterAI()
 }
 
-// AI 写完正文后:先把内容 flush 到 DB,再调单章自动索引。
+// AI 写完正文后:先把内容 flush 到 DB,再调单章自动索引,索引完再做节拍-事件对账。
 // 失败不弹错,只 console.warn——这是兜底优化,不应妨碍主流程。
 async function autoIndexAfterAI() {
   const id = selectedChapter.value?.id
   if (!id) return
   try {
     await flushEditor()
-    const res = await chaptersApi.autoIndex(id)
-    if (res?.extracted > 0) {
-      ElMessage.success(`已自动索引本章新增 ${res.extracted} 个事件`)
+    const idx = await chaptersApi.autoIndex(id)
+    if (idx?.extracted > 0) {
+      ElMessage.success(`已自动索引本章新增 ${idx.extracted} 个事件`)
+    }
+    // 章节有节拍才需要对账,后端会自己判断;前端只在 beats 非空时才请求,省一次 AI 调用
+    const detail = await chaptersApi.get(id)
+    if (Array.isArray(detail.beats) && detail.beats.length > 0) {
+      const align = await chaptersApi.checkBeats(id)
+      if (align?.missing > 0 || align?.partial > 0) {
+        const bits = []
+        if (align.missing) bits.push(`${align.missing} 拍未兑现`)
+        if (align.partial) bits.push(`${align.partial} 拍弱化`)
+        ElMessage.warning(`节拍对账:${bits.join(' / ')},去节拍编辑里看详情`)
+      }
     }
   } catch (e) {
-    console.warn('自动索引失败,跳过:', e?.message || e)
+    console.warn('自动索引/对账失败,跳过:', e?.message || e)
   }
 }
 </script>
@@ -543,6 +561,7 @@ async function autoIndexAfterAI() {
     :items="projectItems"
     :threads="projectThreads"
     :initial-beats="currentChapterBeats"
+    :initial-alignment="currentChapterAlignment"
     :default-target-word-count="store.project?.words_per_chapter || 4000"
     :initial-instruction="drawerInitialInstruction"
     @replace="onDrawerReplace"
@@ -581,6 +600,7 @@ async function autoIndexAfterAI() {
     :chapter-id="selectedChapter?.id || null"
     :chapter-title="selectedChapterFullTitle"
     :initial-beats="currentChapterBeats"
+    :initial-alignment="currentChapterAlignment"
     :threads="projectThreads"
     :target-word-count="store.project?.words_per_chapter || 4000"
     @saved="onBeatsSaved"

@@ -25,6 +25,8 @@ const props = defineProps({
   threads: { type: Array, default: () => [] },
   // 当前章节已有的节拍,供 generate 模式预填
   initialBeats: { type: Array, default: () => [] },
+  // 当前章节的对账结果,供 generate 模式在节拍编辑里显示徽章
+  initialAlignment: { type: Array, default: () => [] },
   // 工程在「新建」时填的每章字数,作为本章生成的默认目标字数
   defaultTargetWordCount: { type: Number, default: 4000 },
   // 由「AI 文风检查」跳过来时,预填到 rewrite 抽屉的改写指令
@@ -42,6 +44,7 @@ const selectedWorldIds = ref([])
 const selectedItemIds = ref([])
 // 节拍:仅 generate 模式启用,默认展开折叠面板
 const beats = ref([])
+const beatsAlignment = ref([])
 const beatsOpen = ref(true)
 const result = ref('')
 const phase = ref('idle') // idle | streaming | done | error
@@ -96,6 +99,10 @@ watch(
             detail: b.detail || '',
             thread_titles: Array.isArray(b.thread_titles) ? b.thread_titles.slice() : [],
           }))
+        : []
+      // 上一次生成的对账结果(用户重新打开抽屉时也能看到上轮的徽章)
+      beatsAlignment.value = Array.isArray(props.initialAlignment)
+        ? props.initialAlignment
         : []
     } else {
       stop()
@@ -245,6 +252,7 @@ function onReplaceSelection() {
               :chapter-id="chapterId"
               :threads="threads"
               :target-word-count="targetWordCount"
+              :alignment="beatsAlignment"
               compact
             />
           </div>

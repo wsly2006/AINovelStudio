@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import { Plus, Delete, MagicStick, Top, Bottom } from '@element-plus/icons-vue'
@@ -14,6 +14,8 @@ const props = defineProps({
   targetWordCount: { type: Number, default: 4000 },
   // 草拟出错时不让用户失去现有手填节拍。compact 留给 AIGenerateDrawer 用紧凑布局
   compact: { type: Boolean, default: false },
+  // 节拍-事件对账结果,数组与 modelValue 同序对齐(可空)
+  alignment: { type: Array, default: () => [] },
 })
 const emit = defineEmits(['update:modelValue'])
 
@@ -21,6 +23,21 @@ const { t } = useI18n()
 
 const items = ref([])
 const suggesting = ref(false)
+
+// 把对账结果按 beat_index 索引,渲染时按下标取
+const alignmentByIndex = computed(() => {
+  const m = {}
+  for (const a of (props.alignment || [])) {
+    if (typeof a?.beat_index === 'number') m[a.beat_index] = a
+  }
+  return m
+})
+
+const STATUS_META = {
+  covered: { label: '已兑现', color: '#00b42a', icon: '✓' },
+  partial: { label: '弱化', color: '#fa8c16', icon: '⚠' },
+  missing: { label: '未兑现', color: '#f53f3f', icon: '✗' },
+}
 
 watch(
   () => props.modelValue,
@@ -123,9 +140,22 @@ async function onSuggest() {
     </div>
 
     <div v-else class="list">
-      <div v-for="(b, i) in items" :key="i" class="beat-row">
+      <div
+        v-for="(b, i) in items"
+        :key="i"
+        class="beat-row"
+        :class="alignmentByIndex[i] ? `beat-row-${alignmentByIndex[i].status}` : ''"
+      >
         <div class="row-head">
           <span class="idx">{{ i + 1 }}</span>
+          <span
+            v-if="alignmentByIndex[i]"
+            class="status-badge"
+            :style="{ background: STATUS_META[alignmentByIndex[i].status].color }"
+            :title="alignmentByIndex[i].note || STATUS_META[alignmentByIndex[i].status].label"
+          >
+            {{ STATUS_META[alignmentByIndex[i].status].icon }} {{ STATUS_META[alignmentByIndex[i].status].label }}
+          </span>
           <el-input
             v-model="b.title"
             :placeholder="t('beats.titlePlaceholder')"
@@ -152,6 +182,13 @@ async function onSuggest() {
           @change="emitChange"
           class="detail-input"
         />
+        <div
+          v-if="alignmentByIndex[i]?.note && alignmentByIndex[i].status !== 'covered'"
+          class="alignment-note"
+          :style="{ color: STATUS_META[alignmentByIndex[i].status].color }"
+        >
+          {{ alignmentByIndex[i].note }}
+        </div>
         <div v-if="threads.length" class="threads-row">
           <span class="threads-label">{{ t('beats.threadsLabel') }}</span>
           <el-select
@@ -266,5 +303,38 @@ async function onSuggest() {
 }
 .compact .beat-row {
   padding: 6px 8px;
+}
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: #4080ff;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.alignment-note {
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 4px 8px;
+  background: #fafbfc;
+  border-radius: 6px;
+}
+.beat-row-covered {
+  border-left: 3px solid #00b42a;
+  padding-left: 8px;
+}
+.beat-row-partial {
+  border-left: 3px solid #fa8c16;
+  padding-left: 8px;
+  background: #fff8ef;
+}
+.beat-row-missing {
+  border-left: 3px solid #f53f3f;
+  padding-left: 8px;
+  background: #fff5f5;
 }
 </style>

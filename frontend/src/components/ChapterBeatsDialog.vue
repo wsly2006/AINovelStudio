@@ -10,6 +10,8 @@ const props = defineProps({
   chapterId: { type: Number, default: null },
   chapterTitle: { type: String, default: '' },
   initialBeats: { type: Array, default: () => [] },
+  // 节拍-事件对账结果(可空,通常由父组件预先 fetch 章节详情时拿到)
+  initialAlignment: { type: Array, default: () => [] },
   threads: { type: Array, default: () => [] },
   targetWordCount: { type: Number, default: 4000 },
 })
@@ -18,11 +20,12 @@ const emit = defineEmits(['update:modelValue', 'saved'])
 const { t } = useI18n()
 
 const beats = ref([])
+const alignment = ref([])
 const saving = ref(false)
 
 watch(
-  () => [props.modelValue, props.initialBeats],
-  ([visible, init]) => {
+  () => [props.modelValue, props.initialBeats, props.initialAlignment],
+  ([visible, init, initAlign]) => {
     if (!visible) return
     beats.value = Array.isArray(init)
       ? init.map((b) => ({
@@ -31,16 +34,27 @@ watch(
           thread_titles: Array.isArray(b.thread_titles) ? b.thread_titles.slice() : [],
         }))
       : []
+    alignment.value = Array.isArray(initAlign) ? initAlign : []
   },
   { immediate: true }
 )
+
+// 改动节拍后,旧的对账结果就不再可信,UI 上立刻撤掉徽章
+function onBeatsChange(next) {
+  beats.value = next
+  alignment.value = []
+}
 
 async function onSave() {
   if (saving.value || !props.chapterId) return
   saving.value = true
   try {
     const updated = await chaptersApi.update(props.chapterId, { beats: beats.value })
-    emit('saved', { chapterId: props.chapterId, beats: updated.beats })
+    emit('saved', {
+      chapterId: props.chapterId,
+      beats: updated.beats,
+      beats_alignment: updated.beats_alignment,
+    })
     ElMessage.success(t('beats.saved' /* fallback */) || '已保存')
     emit('update:modelValue', false)
   } catch (e) {
@@ -69,10 +83,12 @@ function close() {
     </div>
 
     <ChapterBeatsEditor
-      v-model="beats"
+      :model-value="beats"
+      @update:model-value="onBeatsChange"
       :chapter-id="chapterId"
       :threads="threads"
       :target-word-count="targetWordCount"
+      :alignment="alignment"
     />
 
     <template #footer>

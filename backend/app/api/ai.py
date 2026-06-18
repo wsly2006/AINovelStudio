@@ -11,6 +11,7 @@ from sse_starlette.sse import EventSourceResponse
 from app.ai.client import AIError, AINotConfiguredError
 from app.database import get_db
 from app.schemas.chapter import (
+    BeatsAlignmentResponse,
     ChapterBeat,
     SuggestBeatsRequest,
     SuggestBeatsResponse,
@@ -19,10 +20,12 @@ from app.schemas.project import ProjectCreate
 from app.services import (
     ai_task_manager,
     chapter_ai_service,
+    chapter_beats_alignment_service,
     chapter_beats_service,
     project_ai_service,
     project_suggest_service,
 )
+from app.services.chapter_beats_alignment_service import BeatsAlignmentParseError
 from app.services.chapter_beats_service import BeatsParseError
 from app.services.chapter_service import ChapterNotFoundError
 from app.services.project_service import ProjectNameConflictError
@@ -172,6 +175,27 @@ async def ai_suggest_beats(
     except AIError as e:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e)) from e
     return SuggestBeatsResponse(beats=beats)
+
+
+@router.post(
+    "/chapters/{chapter_id}/ai/check-beats",
+    response_model=BeatsAlignmentResponse,
+)
+async def ai_check_beats(
+    chapter_id: int, db: Session = Depends(get_db)
+) -> BeatsAlignmentResponse:
+    """节拍-事件对账:把 chapter.beats 跟实际抽出的事件交给 AI 逐拍判断,
+    结果落 chapter.beats_alignment。"""
+    try:
+        return await chapter_beats_alignment_service.align(db, chapter_id)
+    except ChapterNotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="章节不存在") from e
+    except BeatsAlignmentParseError as e:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e)) from e
+    except AINotConfiguredError as e:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
+    except AIError as e:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e)) from e
 
 
 class AICreateProjectBody(BaseModel):

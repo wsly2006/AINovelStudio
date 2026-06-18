@@ -244,6 +244,48 @@ _SUGGEST_BEATS_USER = """请为下面这一章草拟 3-5 个节拍(beat)。
   ]
 }"""
 
+# ============ 4e. 节拍-事件对账 ============
+
+_CHECK_BEATS_SYSTEM = (
+    "你是冷静的中文小说编辑。给定本章计划好的节拍 + 实际抽出的事件,"
+    "逐拍判断这一拍是否被某个或某几个事件实际兑现:"
+    "covered=完全兑现 / partial=部分兑现或被弱化 / missing=完全没写到。"
+    "只看事件,不要脑补正文里有但未抽出的内容。"
+    "严格输出 JSON,禁止额外解释或 Markdown 代码块。"
+)
+
+_CHECK_BEATS_USER = """请对账下面这一章的节拍与实际抽出的情节事件。
+
+章节:{{chapter_label}}
+
+【计划节拍】(按顺序排列,beat_index 从 0 起算)
+{{beats_block}}
+
+【实际事件】(本章抽出的情节事件,id 在前)
+{{events_block}}
+
+逐拍判断:
+- covered:某个事件清晰兑现了这一拍(允许多个事件合并兑现)
+- partial:有相关事件但弱化、走味、或只完成了一半
+- missing:没有事件支撑这一拍
+
+要求:
+- 输出顺序必须和节拍顺序一致,beat_index 不能跳号
+- matched_event_ids 必须从【实际事件】里挑,不要造,missing 时为 []
+- note:30-100 字简评。covered 写「哪个事件兑现了什么」;partial 写「弱在哪」;missing 写「为什么算缺失」
+
+输出 JSON,严格遵循:
+{
+  "items": [
+    {
+      "beat_index": 0,
+      "status": "covered",
+      "matched_event_ids": [12, 13],
+      "note": "事件 12 描述男主路遇刺客,与节拍 1 完全吻合"
+    }
+  ]
+}"""
+
 # ============ 5. 大纲建议(创建工程时) ============
 
 _OUTLINE_SYSTEM = "你是一位经验丰富的网络小说大纲编辑,擅长长篇结构安排。"
@@ -575,6 +617,15 @@ PROMPTS: tuple[PromptDef, ...] = (
             "previous_summary", "chapter_label", "chapter_summary",
             "target_word_count", "extra_instruction_block",
         ),
+    ),
+    PromptDef(
+        key="chapter.check_beats",
+        name="节拍-事件对账",
+        group="analysis",
+        description="写完正文后,逐拍判断是否被实际事件覆盖(covered / partial / missing)。",
+        default_system=_CHECK_BEATS_SYSTEM,
+        default_user=_CHECK_BEATS_USER,
+        placeholders=("chapter_label", "beats_block", "events_block"),
     ),
     PromptDef(
         key="chapter.score",
