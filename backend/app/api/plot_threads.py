@@ -148,6 +148,15 @@ def get_thread(thread_id: int, db: Session = Depends(get_db)) -> PlotThreadRead:
     return PlotThreadRead.model_validate(t)
 
 
+@thread_router.get("/{thread_id}/events")
+def list_thread_events(thread_id: int, db: Session = Depends(get_db)) -> list[dict]:
+    """这条主线相关的事件,按章节顺序铺开。前端在主线详情页展示。"""
+    try:
+        return plot_thread_service.list_events_for_thread(db, thread_id)
+    except PlotThreadNotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="主线不存在") from e
+
+
 @thread_router.patch("/{thread_id}", response_model=PlotThreadRead)
 def update_thread(
     thread_id: int, payload: PlotThreadUpdate, db: Session = Depends(get_db)

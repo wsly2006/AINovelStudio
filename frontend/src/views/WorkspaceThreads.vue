@@ -1,12 +1,13 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, MagicStick, Delete, StarFilled } from '@element-plus/icons-vue'
 import { plotThreadsApi } from '../api/plotThreads'
 
 const route = useRoute()
+const router = useRouter()
 const { t } = useI18n()
 
 const projectId = computed(() => Number(route.params.id))
@@ -14,6 +15,9 @@ const items = ref([])
 const loading = ref(false)
 const suggesting = ref(false)
 const selectedId = ref(null)
+// 选中主线的相关事件,按章节顺序铺开
+const relatedEvents = ref([])
+const eventsLoading = ref(false)
 
 const STATUS_OPTIONS = [
   { value: 'planning', tKey: 'threads.statusPlanning', color: '#5b8def' },
@@ -40,6 +44,32 @@ async function load() {
   } finally {
     loading.value = false
   }
+}
+
+// 选中主线变化时拉相关事件。失败不弹错,清空就好——主线本身的编辑是主路径。
+watch(
+  selectedId,
+  async (id) => {
+    if (!id) {
+      relatedEvents.value = []
+      return
+    }
+    eventsLoading.value = true
+    try {
+      relatedEvents.value = await plotThreadsApi.listEvents(id)
+    } catch {
+      relatedEvents.value = []
+    } finally {
+      eventsLoading.value = false
+    }
+  },
+  { immediate: true }
+)
+
+function jumpToChapter(chapterId) {
+  // 跳到正文页,WorkspaceContent 默认会选中第一章,这里靠 store 的 select。
+  // 简化版:直接走 router,让用户自己再点一下章节。
+  router.push({ name: 'workspace-content', params: { id: String(projectId.value) } })
 }
 
 onMounted(load)
@@ -253,6 +283,26 @@ async function onSuggest() {
           />
         </div>
 
+        <!-- 相关事件:这条线在哪几章发生过什么。来自 plot_events.thread_id 反查 -->
+        <div class="form-row events-block" v-loading="eventsLoading">
+          <label>相关事件 ({{ relatedEvents.length }})</label>
+          <div v-if="!eventsLoading && relatedEvents.length === 0" class="events-empty">
+            还没有事件挂在这条线上。索引章节后,AI 会自动把推动这条线的事件绑过来。
+          </div>
+          <div v-else class="events-list">
+            <div
+              v-for="ev in relatedEvents"
+              :key="ev.id"
+              class="ev-row"
+              @click="jumpToChapter(ev.chapter_id)"
+            >
+              <span class="ev-chap">第 {{ ev.chapter_order_index }} 章</span>
+              <span class="ev-title">{{ ev.title }}</span>
+              <span v-if="ev.description" class="ev-desc">{{ ev.description }}</span>
+            </div>
+          </div>
+        </div>
+
         <div class="form-row form-row-actions">
           <el-button text type="danger" :icon="Delete" @click="onDelete(selected)">
             {{ t('common.delete') }}
@@ -408,5 +458,52 @@ async function onSuggest() {
   margin-top: 24px;
   padding-top: 12px;
   border-top: 1px solid #f2f3f5;
+}
+.events-block {
+  border-top: 1px solid #f2f3f5;
+  padding-top: 12px;
+  margin-top: 8px;
+}
+.events-empty {
+  font-size: 12px;
+  color: #c9cdd4;
+  padding: 12px 0 4px;
+}
+.events-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ev-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.12s;
+  font-size: 13px;
+}
+.ev-row:hover {
+  background: #f7f8fa;
+}
+.ev-chap {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: #4080ff;
+  font-variant-numeric: tabular-nums;
+  min-width: 56px;
+}
+.ev-title {
+  font-weight: 600;
+  color: #1f2329;
+  flex-shrink: 0;
+}
+.ev-desc {
+  color: #86909c;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
 }
 </style>

@@ -152,12 +152,27 @@ async def extract_relations(
 # ============ 情节抽取 ============
 
 
-def _build_plot_messages(db, chapter: Chapter, characters: list[Character]) -> list[dict]:
+def _threads_brief(threads: list) -> str:
+    """供 extract.plot 注入的可用主线列表(只列 active + planning)。
+    AI 输出 thread_id 时必须从这里挑;实在不属于任何线就给 null。"""
+    if not threads:
+        return "(本工程暂无主线;事件 thread_id 一律给 null)"
+    lines = []
+    for t in threads:
+        bits = [f"id={t.id}", t.title]
+        if t.description:
+            bits.append(t.description.strip()[:80])
+        lines.append("- " + " | ".join(bits))
+    return "\n".join(lines)
+
+
+def _build_plot_messages(db, chapter: Chapter, characters: list[Character], threads: list) -> list[dict]:
     return prompt_service.render(
         db,
         "extract.plot",
         {
             "characters_brief": _characters_brief(characters),
+            "threads_brief": _threads_brief(threads),
             "chapter_label": f"第 {chapter.order_index} 章《{chapter.title}》",
             "chapter_content": chapter.content or "",
         },
@@ -182,6 +197,11 @@ async def extract_plot(
 
     characters = list(project.characters)
     char_ids = {c.id for c in characters}
+    # 只把活跃 / 规划中的主线喂给 AI;已收 / 已废弃的不该再被关联
+    active_threads = [
+        t for t in project.plot_threads if t.status in ("planning", "active")
+    ]
+    valid_thread_ids = {t.id for t in active_threads}
 
     # 只清掉本次扫描范围内章节的旧事件,工程级抽取保持原有「全量重抽」语义
     target_chapter_ids = {ch.id for ch in chapters}
@@ -193,6 +213,8 @@ async def extract_plot(
     yield {"event": "start", "data": {"total": len(chapters)}}
 
     extracted = 0
+    # 本批次抽到关联的主线 id 集合,抽完一次性把 planning 推进到 active
+    hit_thread_ids: set[int] = set()
     for idx, chapter in enumerate(chapters, start=1):
         if not (chapter.content or "").strip():
             yield {
@@ -201,7 +223,7 @@ async def extract_plot(
             }
             continue
 
-        messages = _build_plot_messages(db, chapter, characters)
+        messages = _build_plot_messages(db, chapter, characters, active_threads)
         try:
             raw = await ai_client.complete(
                 db, messages, scene="analysis.plot", max_tokens=2000, project_id=project_id
@@ -223,6 +245,14 @@ async def extract_plot(
             cids = [int(x) for x in cids if isinstance(x, (int, str)) and str(x).isdigit()]
             cids = [x for x in cids if x in char_ids]
 
+            # AI 给的 thread_id 必须在白名单里,否则置 null。容忍字符串数字。
+            raw_tid = item.get("thread_id")
+            tid: int | None = None
+            if isinstance(raw_tid, (int, str)) and str(raw_tid).strip().lstrip("-").isdigit():
+                candidate = int(raw_tid)
+                if candidate in valid_thread_ids:
+                    tid = candidate
+
             ev = PlotEvent(
                 project_id=project_id,
                 chapter_id=chapter.id,
@@ -231,9 +261,12 @@ async def extract_plot(
                 character_ids=cids,
                 importance=max(1, min(5, int(item.get("importance") or 3))),
                 order_in_chapter=order_in_chapter,
+                thread_id=tid,
             )
             db.add(ev)
             extracted += 1
+            if tid is not None:
+                hit_thread_ids.add(tid)
         db.commit()
 
         yield {
@@ -246,7 +279,25 @@ async def extract_plot(
             },
         }
 
-    yield {"event": "done", "data": {"total": len(chapters), "extracted": extracted}}
+    # 状态自动推进:有事件挂上的 planning 线一律转 active。
+    # 不动 active(避免误降级)、不动 resolved/abandoned(用户已盖棺)。
+    promoted = 0
+    if hit_thread_ids:
+        for t in active_threads:
+            if t.id in hit_thread_ids and t.status == "planning":
+                t.status = "active"
+                promoted += 1
+        if promoted:
+            db.commit()
+
+    yield {
+        "event": "done",
+        "data": {
+            "total": len(chapters),
+            "extracted": extracted,
+            "threads_promoted": promoted,
+        },
+    }
 
 
 # ============ 一致性检查 ============

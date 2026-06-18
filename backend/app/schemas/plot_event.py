@@ -10,6 +10,7 @@ class PlotEventBase(BaseModel):
     character_ids: list[int] = Field(default_factory=list)
     importance: int = Field(default=3, ge=1, le=5)
     order_in_chapter: int = Field(default=0, ge=0)
+    thread_id: int | None = None
 
     @field_validator("title")
     @classmethod
@@ -30,6 +31,7 @@ class PlotEventUpdate(BaseModel):
     character_ids: list[int] | None = None
     importance: int | None = Field(default=None, ge=1, le=5)
     order_in_chapter: int | None = Field(default=None, ge=0)
+    thread_id: int | None = None
 
 
 class PlotEventRead(PlotEventBase):

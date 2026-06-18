@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, MagicStick, Search, StarFilled } from '@element-plus/icons-vue'
 import { plotApi } from '../api/analysis'
+import { plotThreadsApi } from '../api/plotThreads'
 import { stateEventsApi } from '../api/stateEvents'
 import { useCharactersStore } from '../stores/characters'
 import { useWorkspaceStore } from '../stores/workspace'
@@ -22,6 +23,7 @@ const laddersStore = useLaddersStore()
 const projectId = computed(() => Number(route.params.id))
 const events = ref([])
 const stateEvents = ref([])
+const threads = ref([])
 const loading = ref(false)
 const extracting = ref(false)
 const checking = ref(false)
@@ -35,6 +37,7 @@ const form = ref({
   description: '',
   importance: 3,
   character_ids: [],
+  thread_id: null,
 })
 const editingId = ref(null)
 
@@ -56,6 +59,11 @@ const worldById = computed(() => {
 const ladderById = computed(() => {
   const m = {}
   for (const l of laddersStore.items) m[l.id] = l
+  return m
+})
+const threadById = computed(() => {
+  const m = {}
+  for (const t of threads.value) m[t.id] = t
   return m
 })
 
@@ -140,12 +148,14 @@ async function loadAll() {
     if (!charsStore.items.length) await charsStore.load(projectId.value)
     if (worldStore.projectId !== projectId.value) await worldStore.load(projectId.value)
     if (laddersStore.projectId !== projectId.value) await laddersStore.load(projectId.value)
-    const [evs, ses] = await Promise.all([
+    const [evs, ses, ths] = await Promise.all([
       plotApi.listEvents(projectId.value),
       stateEventsApi.list(projectId.value),
+      plotThreadsApi.list(projectId.value).catch(() => []),
     ])
     events.value = evs
     stateEvents.value = ses
+    threads.value = ths
   } finally {
     loading.value = false
   }
@@ -161,6 +171,7 @@ function openNew() {
     description: '',
     importance: 3,
     character_ids: [],
+    thread_id: null,
   }
   dialogVisible.value = true
 }
@@ -173,6 +184,7 @@ function openEdit(ev) {
     description: ev.description || '',
     importance: ev.importance,
     character_ids: [...(ev.character_ids || [])],
+    thread_id: ev.thread_id ?? null,
   }
   dialogVisible.value = true
 }
@@ -189,6 +201,7 @@ async function onSubmit() {
         description: form.value.description || null,
         importance: form.value.importance,
         character_ids: form.value.character_ids,
+        thread_id: form.value.thread_id ?? null,
       })
     } else {
       await plotApi.createEvent(projectId.value, {
@@ -197,6 +210,7 @@ async function onSubmit() {
         description: form.value.description || null,
         importance: form.value.importance,
         character_ids: form.value.character_ids,
+        thread_id: form.value.thread_id ?? null,
       })
     }
     dialogVisible.value = false
@@ -339,6 +353,13 @@ function nameOf(id) {
           >
             <div class="ev-row1">
               <span class="ev-title">{{ ev.title }}</span>
+              <span
+                v-if="ev.thread_id != null && threadById[ev.thread_id]"
+                class="ev-thread"
+                :title="`推进:${threadById[ev.thread_id].title}`"
+              >
+                {{ threadById[ev.thread_id].title }}
+              </span>
               <span class="stars">
                 <el-icon v-for="n in ev.importance" :key="n"><StarFilled /></el-icon>
               </span>
@@ -420,6 +441,22 @@ function nameOf(id) {
         <el-form-item :label="t('plot.charactersLabel')">
           <el-select v-model="form.character_ids" multiple filterable style="width: 100%">
             <el-option v-for="c in charsStore.items" :key="c.id" :value="c.id" :label="c.name" />
+          </el-select>
+        </el-form-item>
+        <el-form-item v-if="threads.length" label="推进主线">
+          <el-select
+            v-model="form.thread_id"
+            clearable
+            filterable
+            placeholder="可选,本事件推进哪条主线"
+            style="width: 100%"
+          >
+            <el-option
+              v-for="thr in threads"
+              :key="thr.id"
+              :value="thr.id"
+              :label="thr.title"
+            />
           </el-select>
         </el-form-item>
       </el-form>
@@ -580,6 +617,14 @@ function nameOf(id) {
   font-weight: 600;
   flex: 1;
   color: #1f2329;
+}
+.ev-thread {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: #ecf5ff;
+  color: #4080ff;
+  flex-shrink: 0;
 }
 .stars {
   color: #fadb14;

@@ -34,6 +34,15 @@ def create_event(db: Session, project_id: int, payload: PlotEventCreate) -> Plot
     if chapter is None or chapter.project_id != project_id:
         raise InvalidPlotEventError("chapter_id 不属于当前工程")
 
+    # thread_id 必须属于当前工程,否则置 null。容忍前端误传跨工程 id。
+    tid = payload.thread_id
+    if tid is not None:
+        from app.models.plot_thread import PlotThread
+
+        thr = db.get(PlotThread, tid)
+        if thr is None or thr.project_id != project_id:
+            tid = None
+
     e = PlotEvent(
         project_id=project_id,
         chapter_id=payload.chapter_id,
@@ -42,6 +51,7 @@ def create_event(db: Session, project_id: int, payload: PlotEventCreate) -> Plot
         character_ids=payload.character_ids,
         importance=payload.importance,
         order_in_chapter=payload.order_in_chapter,
+        thread_id=tid,
     )
     db.add(e)
     db.commit()
@@ -54,6 +64,13 @@ def update_event(db: Session, event_id: int, payload: PlotEventUpdate) -> PlotEv
     if e is None:
         raise PlotEventNotFoundError(event_id)
     data = payload.model_dump(exclude_unset=True)
+    # thread_id 改为非空时校验同工程
+    if "thread_id" in data and data["thread_id"] is not None:
+        from app.models.plot_thread import PlotThread
+
+        thr = db.get(PlotThread, data["thread_id"])
+        if thr is None or thr.project_id != e.project_id:
+            data["thread_id"] = None
     for k, v in data.items():
         setattr(e, k, v)
     db.commit()

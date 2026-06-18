@@ -41,6 +41,10 @@ class PlotEvent(Base):
     character_ids: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     importance: Mapped[int] = mapped_column(Integer, nullable=False, default=3)
     order_in_chapter: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # 推进的主线 id;事件不绑线就为 null。删主线时 SET NULL 保留事件。
+    thread_id: Mapped[int | None] = mapped_column(
+        ForeignKey("plot_threads.id", ondelete="SET NULL"), nullable=True
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), nullable=False

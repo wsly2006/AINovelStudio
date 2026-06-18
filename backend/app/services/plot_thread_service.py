@@ -94,3 +94,34 @@ def list_active_threads_for_prompt(db: Session, project_id: int) -> list[PlotThr
         .order_by(PlotThread.order_index, PlotThread.id)
     )
     return list(db.execute(stmt).scalars().all())
+
+
+def list_events_for_thread(db: Session, thread_id: int) -> list[dict]:
+    """这条主线在哪几章发生过什么事件,按章节顺序铺开。"""
+    from app.models.chapter import Chapter
+    from app.models.plot_event import PlotEvent
+
+    t = db.get(PlotThread, thread_id)
+    if t is None:
+        raise PlotThreadNotFoundError(thread_id)
+
+    stmt = (
+        select(PlotEvent, Chapter.order_index, Chapter.title)
+        .join(Chapter, Chapter.id == PlotEvent.chapter_id)
+        .where(PlotEvent.thread_id == thread_id)
+        .order_by(Chapter.order_index, PlotEvent.order_in_chapter, PlotEvent.id)
+    )
+    rows = db.execute(stmt).all()
+    out = []
+    for ev, order_index, ch_title in rows:
+        out.append({
+            "id": ev.id,
+            "chapter_id": ev.chapter_id,
+            "chapter_order_index": order_index,
+            "chapter_title": ch_title,
+            "title": ev.title,
+            "description": ev.description,
+            "importance": ev.importance,
+            "order_in_chapter": ev.order_in_chapter,
+        })
+    return out

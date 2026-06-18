@@ -462,6 +462,9 @@ _EXTRACT_PLOT_SYSTEM = (
 _EXTRACT_PLOT_USER = """已知人物列表(用 id 引用):
 {{characters_brief}}
 
+可关联的主线(只能用下面列出的 id;若事件不属于任何线,thread_id 给 null):
+{{threads_brief}}
+
 章节:{{chapter_label}}
 
 正文:
@@ -476,7 +479,8 @@ _EXTRACT_PLOT_USER = """已知人物列表(用 id 引用):
       "title": "事件标题(15 字以内)",
       "description": "事件描述(40-100 字)",
       "character_ids": [1, 2],
-      "importance": 3
+      "importance": 3,
+      "thread_id": 5
     }
   ]
 }"""
@@ -666,10 +670,10 @@ PROMPTS: tuple[PromptDef, ...] = (
         key="extract.plot",
         name="情节抽取",
         group="analysis",
-        description="把章节切分成 2~6 个关键事件。",
+        description="把章节切分成 2~6 个关键事件,关联到对应主线。",
         default_system=_EXTRACT_PLOT_SYSTEM,
         default_user=_EXTRACT_PLOT_USER,
-        placeholders=("characters_brief", "chapter_label", "chapter_content"),
+        placeholders=("characters_brief", "threads_brief", "chapter_label", "chapter_content"),
     ),
     PromptDef(
         key="analysis.check",

@@ -13,4 +13,7 @@ export const plotThreadsApi = {
     client
       .post(`/projects/${projectId}/threads/suggest`, {}, { timeout: 90000 })
       .then((r) => r.data),
+  // 这条主线相关的事件,按章节顺序铺开
+  listEvents: (threadId) =>
+    client.get(`/threads/${threadId}/events`).then((r) => r.data),
 }
