@@ -14,10 +14,13 @@ import AIToolbar from '../components/AIToolbar.vue'
 import AIGenerateDrawer from '../components/AIGenerateDrawer.vue'
 import ChapterScoreDialog from '../components/ChapterScoreDialog.vue'
 import ChapterStyleDialog from '../components/ChapterStyleDialog.vue'
+import ChapterBeatsDialog from '../components/ChapterBeatsDialog.vue'
 import { formatChapterFullTitle } from '../composables/chapterTitle'
 import { indexChapter } from '../composables/indexChapter'
 import { locateQuote } from '../composables/locateQuote'
 import { chapterVersionsApi } from '../api/chapterVersions'
+import { chaptersApi } from '../api/chapters'
+import { plotThreadsApi } from '../api/plotThreads'
 
 const route = useRoute()
 const store = useWorkspaceStore()
@@ -44,6 +47,13 @@ const dialogTargetId = ref(null)
 const scoreVisible = ref(false)
 // AI 文风检查对话框
 const styleVisible = ref(false)
+
+// 节拍对话框 + 当前章节的最新节拍。打开抽屉/对话框前实时拉,免得改了章节后用旧值
+const beatsDialogVisible = ref(false)
+const currentChapterBeats = ref([])
+
+// 工程主线列表(供节拍编辑里选「推进哪条线」)
+const projectThreads = ref([])
 
 const selectedChapter = computed(
   () => store.chapters.find((c) => c.id === store.selectedId) || null
@@ -102,7 +112,31 @@ onMounted(() => {
   if (itemsStore.projectId !== pid) {
     itemsStore.load(pid).catch(() => {})
   }
+  refreshThreads(pid)
 })
+
+async function refreshThreads(pid) {
+  try {
+    projectThreads.value = await plotThreadsApi.list(pid)
+  } catch {
+    projectThreads.value = []
+  }
+}
+
+// 打开生成抽屉 / 节拍对话框前,先拉一次章节详情拿最新 beats
+async function fetchCurrentBeats() {
+  const id = selectedChapter.value?.id
+  if (!id) {
+    currentChapterBeats.value = []
+    return
+  }
+  try {
+    const detail = await chaptersApi.get(id)
+    currentChapterBeats.value = Array.isArray(detail.beats) ? detail.beats : []
+  } catch {
+    currentChapterBeats.value = []
+  }
+}
 
 async function flushEditor() {
   if (editorRef.value?.flush) {
@@ -231,8 +265,23 @@ function onEditorSaved(meta) {
 async function onAIGenerate() {
   if (!selectedChapter.value) return
   await flushEditor()
+  await fetchCurrentBeats()
   drawerMode.value = 'generate'
   drawerVisible.value = true
+}
+
+async function onAIBeats() {
+  if (!selectedChapter.value) return
+  await flushEditor()
+  await fetchCurrentBeats()
+  beatsDialogVisible.value = true
+}
+
+function onBeatsSaved({ chapterId, beats }) {
+  // 同步到本地缓存,免得抽屉再次打开时还是旧值
+  if (selectedChapter.value?.id === chapterId) {
+    currentChapterBeats.value = Array.isArray(beats) ? beats : []
+  }
 }
 
 async function onAIContinue() {
@@ -434,6 +483,7 @@ async function onDrawerAccept(text) {
         <AIToolbar
           :indexing="indexing"
           @generate="onAIGenerate"
+          @beats="onAIBeats"
           @style-check="onAIStyleCheck"
           @continue="onAIContinue"
           @rewrite="onAIRewrite"
@@ -471,12 +521,15 @@ async function onDrawerAccept(text) {
     :characters="projectCharacters"
     :world-entities="projectWorld"
     :items="projectItems"
+    :threads="projectThreads"
+    :initial-beats="currentChapterBeats"
     :default-target-word-count="store.project?.words_per_chapter || 4000"
     :initial-instruction="drawerInitialInstruction"
     @replace="onDrawerReplace"
     @append="onDrawerAppend"
     @insert="onDrawerInsert"
     @accept="onDrawerAccept"
+    @beats-saved="onBeatsSaved"
   />
 
   <ChapterCreateDialog
@@ -501,6 +554,16 @@ async function onDrawerAccept(text) {
     :chapter-title="selectedChapterFullTitle"
     @changed="onStyleChanged"
     @jump-rewrite="onStyleJumpRewrite"
+  />
+
+  <ChapterBeatsDialog
+    v-model="beatsDialogVisible"
+    :chapter-id="selectedChapter?.id || null"
+    :chapter-title="selectedChapterFullTitle"
+    :initial-beats="currentChapterBeats"
+    :threads="projectThreads"
+    :target-word-count="store.project?.words_per_chapter || 4000"
+    @saved="onBeatsSaved"
   />
 </template>
 

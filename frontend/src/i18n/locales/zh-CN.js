@@ -544,6 +544,24 @@ export default {
     deleted: '已删除',
   },
 
+  beats: {
+    sectionLabel: '本章节拍',
+    sectionHint: '写正文前先列 3-5 拍。AI 会按节拍展开正文,跑偏率直降。',
+    countLabel: '{n} 拍',
+    add: '新增节拍',
+    aiSuggest: 'AI 草拟节拍',
+    empty: '还没有节拍。点「AI 草拟节拍」让 AI 按总纲 + 主线生成,或手动新增。',
+    titlePlaceholder: '本拍发生什么(8-20 字),例:男主路遇刺客',
+    detailPlaceholder: '谁在哪做什么 + 转折 + 暗藏的钩子(40-150 字)',
+    threadsLabel: '推进主线',
+    threadsPlaceholder: '可选,本拍推进哪几条主线',
+    suggestDone: 'AI 已生成 {n} 拍',
+    suggestEmpty: 'AI 没生成有效节拍,可补充本章梗概后再试',
+    suggestFailed: '草拟节拍失败',
+    dialogTitle: '本章节拍',
+    dialogHint: '写正文前先列节拍,AI 生成会按节拍展开。也可在「生成本章」抽屉里直接列。',
+  },
+
   world: {
     pageTitle: '世界观维基',
     newEntity: '新建条目',

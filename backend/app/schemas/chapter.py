@@ -6,6 +6,46 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 ChapterStatus = Literal["draft", "writing", "done"]
 
 
+class ChapterBeat(BaseModel):
+    """章节节拍:写正文前的「本章会发生什么」一拍。"""
+
+    title: str = Field(min_length=1, max_length=80)
+    detail: str | None = Field(default=None, max_length=600)
+    # 推进的主线名(冗余存 title,避免改名/删主线后悬挂)
+    thread_titles: list[str] = Field(default_factory=list, max_length=10)
+
+    @field_validator("title")
+    @classmethod
+    def _strip_title(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("title 不能为空")
+        return v
+
+    @field_validator("detail")
+    @classmethod
+    def _strip_detail(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        v = v.strip()
+        return v or None
+
+    @field_validator("thread_titles")
+    @classmethod
+    def _normalize_threads(cls, v: list[str]) -> list[str]:
+        seen: set[str] = set()
+        out: list[str] = []
+        for t in v or []:
+            t = (t or "").strip()
+            if not t or t in seen:
+                continue
+            if len(t) > 120:
+                t = t[:120]
+            seen.add(t)
+            out.append(t)
+        return out
+
+
 class ChapterCreate(BaseModel):
     title: str = Field(default="", max_length=200)
     summary: str | None = Field(default=None, max_length=4000)
@@ -30,6 +70,8 @@ class ChapterUpdate(BaseModel):
     title: str | None = Field(default=None, max_length=200)
     summary: str | None = Field(default=None, max_length=4000)
     status: ChapterStatus | None = None
+    # 节拍:传 [] 表示清空,传 null/不传 表示不动
+    beats: list[ChapterBeat] | None = Field(default=None, max_length=20)
 
     @field_validator("title", mode="before")
     @classmethod
@@ -60,9 +102,10 @@ class ChapterListItem(BaseModel):
 
 
 class ChapterDetail(ChapterListItem):
-    """详情,含 content,Phase 3 编辑器使用。"""
+    """详情,含 content + beats,Phase 3 编辑器使用。"""
 
     content: str
+    beats: list[ChapterBeat] | None = None
 
 
 class ChapterReorder(BaseModel):
@@ -81,3 +124,14 @@ class ChapterContentSaved(BaseModel):
     id: int
     word_count: int
     updated_at: datetime
+
+
+class SuggestBeatsRequest(BaseModel):
+    """AI 草拟节拍的入参。"""
+
+    target_word_count: int = Field(default=4000, ge=500, le=20000)
+    extra_instruction: str | None = Field(default=None, max_length=2000)
+
+
+class SuggestBeatsResponse(BaseModel):
+    beats: list[ChapterBeat]

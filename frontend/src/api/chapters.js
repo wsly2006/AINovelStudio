@@ -14,4 +14,9 @@ export const chaptersApi = {
       .then((r) => r.data),
   saveContent: (chapterId, content) =>
     client.put(`/chapters/${chapterId}/content`, { content }).then((r) => r.data),
+  // AI 草拟章节节拍。返回 {beats: [...]},不直接落库。
+  suggestBeats: (chapterId, payload = {}) =>
+    client
+      .post(`/chapters/${chapterId}/ai/suggest-beats`, payload, { timeout: 90000 })
+      .then((r) => r.data),
 }

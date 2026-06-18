@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
+    JSON,
     DateTime,
     ForeignKey,
     Index,
@@ -36,6 +37,9 @@ class Chapter(Base):
     order_index: Mapped[int] = mapped_column(Integer, nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False, default="")
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # 章节节拍:写正文前的「本章会发生什么」清单,数组形状 [{title, detail, thread_titles}]
+    # 旧章节 / 未列节拍的为 null,UI 显示「本章未列节拍」
+    beats: Mapped[list | None] = mapped_column(JSON, nullable=True)
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="draft")
     word_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 

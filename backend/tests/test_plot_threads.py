@@ -194,7 +194,9 @@ def test_prompt_injects_synopsis_and_active_threads() -> None:
         description=None,
         synopsis="少年得宝,登天阶,最终守护人间。",
     )
-    chapter = SimpleNamespace(id=1, order_index=1, title="开篇", content="", summary=None)
+    chapter = SimpleNamespace(
+        id=1, order_index=1, title="开篇", content="", summary=None, beats=None
+    )
     threads = [
         SimpleNamespace(
             title="复仇线",
@@ -238,7 +240,9 @@ def test_prompt_omits_synopsis_block_when_empty() -> None:
     project = SimpleNamespace(
         name="X", genre=None, description=None, synopsis=None
     )
-    chapter = SimpleNamespace(id=1, order_index=1, title="", content="", summary=None)
+    chapter = SimpleNamespace(
+        id=1, order_index=1, title="", content="", summary=None, beats=None
+    )
     msgs = prompts.build_generate_messages(
         project, chapter, [], target_word_count=3000, db=None
     )

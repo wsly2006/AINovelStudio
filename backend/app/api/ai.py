@@ -10,13 +10,20 @@ from sse_starlette.sse import EventSourceResponse
 
 from app.ai.client import AIError, AINotConfiguredError
 from app.database import get_db
+from app.schemas.chapter import (
+    ChapterBeat,
+    SuggestBeatsRequest,
+    SuggestBeatsResponse,
+)
 from app.schemas.project import ProjectCreate
 from app.services import (
     ai_task_manager,
     chapter_ai_service,
+    chapter_beats_service,
     project_ai_service,
     project_suggest_service,
 )
+from app.services.chapter_beats_service import BeatsParseError
 from app.services.chapter_service import ChapterNotFoundError
 from app.services.project_service import ProjectNameConflictError
 
@@ -136,6 +143,35 @@ async def ai_summarize(chapter_id: int, db: Session = Depends(get_db)) -> dict:
     except AIError as e:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e)) from e
     return {"summary": summary}
+
+
+@router.post(
+    "/chapters/{chapter_id}/ai/suggest-beats",
+    response_model=SuggestBeatsResponse,
+)
+async def ai_suggest_beats(
+    chapter_id: int,
+    body: SuggestBeatsRequest | None = None,
+    db: Session = Depends(get_db),
+) -> SuggestBeatsResponse:
+    """AI 草拟章节节拍。返回 ChapterBeat 列表,**不直接落库**——由前端编辑后再 PATCH。"""
+    body = body or SuggestBeatsRequest()
+    try:
+        beats: list[ChapterBeat] = await chapter_beats_service.suggest_beats(
+            db,
+            chapter_id,
+            target_word_count=body.target_word_count,
+            extra_instruction=body.extra_instruction,
+        )
+    except ChapterNotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="章节不存在") from e
+    except BeatsParseError as e:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e)) from e
+    except AINotConfiguredError as e:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
+    except AIError as e:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e)) from e
+    return SuggestBeatsResponse(beats=beats)
 
 
 class AICreateProjectBody(BaseModel):

@@ -2,7 +2,10 @@
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
+import { ArrowDown, ArrowRight } from '@element-plus/icons-vue'
 import { streamSSE } from '../api/ai.js'
+import { chaptersApi } from '../api/chapters'
+import ChapterBeatsEditor from './ChapterBeatsEditor.vue'
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
@@ -18,12 +21,16 @@ const props = defineProps({
   worldEntities: { type: Array, default: () => [] },
   // 工程的物品(供多选注入)
   items: { type: Array, default: () => [] },
+  // 工程的主线列表(节拍编辑里供多选「推进哪条线」)
+  threads: { type: Array, default: () => [] },
+  // 当前章节已有的节拍,供 generate 模式预填
+  initialBeats: { type: Array, default: () => [] },
   // 工程在「新建」时填的每章字数,作为本章生成的默认目标字数
   defaultTargetWordCount: { type: Number, default: 4000 },
   // 由「AI 文风检查」跳过来时,预填到 rewrite 抽屉的改写指令
   initialInstruction: { type: String, default: '' },
 })
-const emit = defineEmits(['update:modelValue', 'accept', 'append', 'insert', 'replace'])
+const emit = defineEmits(['update:modelValue', 'accept', 'append', 'insert', 'replace', 'beats-saved'])
 
 const { t } = useI18n()
 
@@ -33,6 +40,9 @@ const rewriteInstruction = ref('')
 const selectedCharacterIds = ref([])
 const selectedWorldIds = ref([])
 const selectedItemIds = ref([])
+// 节拍:仅 generate 模式启用,默认展开折叠面板
+const beats = ref([])
+const beatsOpen = ref(true)
 const result = ref('')
 const phase = ref('idle') // idle | streaming | done | error
 const errorMsg = ref('')
@@ -79,6 +89,14 @@ watch(
       // 世界观、物品默认不勾,避免上下文过长
       selectedWorldIds.value = []
       selectedItemIds.value = []
+      // 把章节已有的节拍灌进编辑器,用户可以在生成前继续微调
+      beats.value = Array.isArray(props.initialBeats)
+        ? props.initialBeats.map((b) => ({
+            title: b.title || '',
+            detail: b.detail || '',
+            thread_titles: Array.isArray(b.thread_titles) ? b.thread_titles.slice() : [],
+          }))
+        : []
     } else {
       stop()
     }
@@ -89,6 +107,20 @@ async function start() {
   if (!canStart.value || !props.chapterId) return
   result.value = ''
   errorMsg.value = ''
+
+  // generate 模式:把节拍先 PATCH 上去,这样后端 stream_generate 拼 prompt 时
+  // 能从 chapter.beats 读到。失败不阻塞生成,降级到「无节拍生成」。
+  if (props.mode === 'generate') {
+    try {
+      const updated = await chaptersApi.update(props.chapterId, {
+        beats: beats.value,
+      })
+      emit('beats-saved', { chapterId: props.chapterId, beats: updated.beats })
+    } catch (e) {
+      console.warn('保存节拍失败,继续生成:', e?.message || e)
+    }
+  }
+
   phase.value = 'streaming'
   abortCtrl = new AbortController()
 
@@ -196,6 +228,28 @@ function onReplaceSelection() {
             style="width: 200px"
           />
         </el-form-item>
+
+        <!-- 节拍面板:仅 generate 模式启用,默认展开 -->
+        <div class="beats-panel">
+          <div class="beats-panel-head" @click="beatsOpen = !beatsOpen">
+            <el-icon class="caret">
+              <ArrowDown v-if="beatsOpen" />
+              <ArrowRight v-else />
+            </el-icon>
+            <span class="beats-title">{{ t('beats.sectionLabel') }}</span>
+            <span class="beats-hint">{{ t('beats.sectionHint') }}</span>
+          </div>
+          <div v-show="beatsOpen" class="beats-panel-body">
+            <ChapterBeatsEditor
+              v-model="beats"
+              :chapter-id="chapterId"
+              :threads="threads"
+              :target-word-count="targetWordCount"
+              compact
+            />
+          </div>
+        </div>
+
         <el-form-item :label="t('ai.extraInstruction')">
           <el-input
             v-model="extraInstruction"
@@ -502,5 +556,40 @@ function onReplaceSelection() {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+}
+.beats-panel {
+  margin-bottom: 16px;
+  border: 1px solid #e5e6eb;
+  border-radius: 8px;
+  background: #fafbfc;
+}
+.beats-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  cursor: pointer;
+  user-select: none;
+  border-bottom: 1px solid transparent;
+}
+.beats-panel-head:hover {
+  background: #f2f3f5;
+}
+.beats-panel-body {
+  padding: 8px 10px 10px;
+  border-top: 1px solid #f2f3f5;
+}
+.beats-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1f2329;
+}
+.beats-hint {
+  font-size: 12px;
+  color: #86909c;
+  margin-left: 6px;
+}
+.caret {
+  color: #86909c;
 }
 </style>

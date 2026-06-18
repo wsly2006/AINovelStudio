@@ -70,6 +70,7 @@ _NEW_COLUMNS: list[tuple[str, str, str]] = [
     ("projects", "tags", "JSON NOT NULL DEFAULT '[]'"),
     ("projects", "words_per_chapter", "INTEGER NOT NULL DEFAULT 4000"),
     ("projects", "synopsis", "TEXT"),
+    ("chapters", "beats", "JSON"),
     # 审稿模型(可选,留空回落写作模型)
     ("ai_settings", "review_provider", "VARCHAR(20)"),
     ("ai_settings", "review_model", "VARCHAR(120)"),

@@ -21,6 +21,39 @@ _KIND_LABEL = {
 }
 
 
+def _beats_context(beats: list[dict] | None, target_word_count: int | None = None) -> str:
+    """章节节拍块。AI 写正文时按这些拍展开,每拍≈ target/N 字。
+
+    beats 形状(从 Chapter.beats JSON 列读出):
+        [{"title": "...", "detail": "...", "thread_titles": ["复仇线"]}]
+    旧章节没有节拍 → 返回空字符串,prompt 里那块就消失。
+    """
+    if not beats:
+        return ""
+    n = len([b for b in beats if (b.get("title") or "").strip()])
+    if not n:
+        return ""
+    head = "本章节拍(必须按下面的顺序与意图展开,不要跳拍、不要加额外大段落):"
+    if target_word_count and n > 0:
+        per = max(200, target_word_count // n)
+        head += f"\n每拍约 {per} 字,可上下浮动。"
+    lines = [head]
+    for i, b in enumerate(beats, start=1):
+        title = (b.get("title") or "").strip()
+        if not title:
+            continue
+        detail = (b.get("detail") or "").strip()
+        threads = b.get("thread_titles") or []
+        bits = []
+        if detail:
+            bits.append(detail)
+        if threads:
+            bits.append("推进:" + "、".join(t for t in threads if t))
+        body = " / ".join(bits)
+        lines.append(f"{i}. {title}{ ' — ' + body if body else '' }")
+    return "\n".join(lines)
+
+
 def _project_context(project: Project) -> str:
     parts = [f"《{project.name}》"]
     if project.genre:
@@ -248,6 +281,7 @@ def build_generate_messages(
         "items_block": _items_context(items or []),
         "events_block": _recent_events_context(recent_events or [], previous),
         "tasks_block": _tasks_context(active_tasks or [], char_names),
+        "beats_block": _beats_context(chapter.beats, target_word_count),
         "chapter_label": _chapter_label(chapter),
         "target_word_count": str(target_word_count),
         "extra_instruction_block": _extra_instruction_block(extra_instruction),
@@ -319,6 +353,29 @@ def build_summarize_messages(chapter: Chapter, *, db=None) -> list[dict]:
         "chapter_content": chapter.content or "",
     }
     return prompt_service.render(db, "chapter.summarize", values)
+
+
+def build_suggest_beats_messages(
+    project: Project,
+    chapter: Chapter,
+    previous: list[Chapter],
+    *,
+    target_word_count: int = 4000,
+    extra_instruction: str | None = None,
+    plot_threads: list[PlotThread] | None = None,
+    db=None,
+) -> list[dict]:
+    values = {
+        "project_info": _project_context(project),
+        "synopsis_block": _synopsis_context(project),
+        "threads_block": _threads_context(plot_threads or []),
+        "previous_summary": _previous_chapters_context(previous, chapter.id),
+        "chapter_label": _chapter_label(chapter),
+        "chapter_summary": (chapter.summary or "").strip() or "(本章梗概暂未填)",
+        "target_word_count": str(target_word_count),
+        "extra_instruction_block": _extra_instruction_block(extra_instruction),
+    }
+    return prompt_service.render(db, "chapter.suggest_beats", values)
 
 
 def build_score_messages(
