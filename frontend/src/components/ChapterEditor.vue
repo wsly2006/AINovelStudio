@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Clock, DocumentAdd } from '@element-plus/icons-vue'
+import { Clock, DocumentAdd, Edit } from '@element-plus/icons-vue'
 import { EditorState } from '@codemirror/state'
 import { EditorView, keymap, lineNumbers, placeholder as placeholderExt } from '@codemirror/view'
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
@@ -16,7 +16,7 @@ import ChapterHistoryDialog from './ChapterHistoryDialog.vue'
 const props = defineProps({
   chapterId: { type: Number, required: true },
 })
-const emit = defineEmits(['saved'])
+const emit = defineEmits(['saved', 'request-rewrite'])
 
 const { t } = useI18n()
 
@@ -195,6 +195,7 @@ watch(() => props.chapterId, async (newId, oldId) => {
   loadAndMount()
 })
 onBeforeUnmount(() => {
+  hideMenu()
   if (view.value) {
     view.value.destroy()
     view.value = null
@@ -250,6 +251,69 @@ async function onRestored(updatedChapter) {
   wordCount.value = updatedChapter?.word_count || 0
   ElMessage.info('已还原到历史版本')
 }
+
+// 右键菜单:仅在有选区时拦截浏览器原生菜单,弹出自定义项「改写选区」
+const menuVisible = ref(false)
+const menuX = ref(0)
+const menuY = ref(0)
+const menuEl = ref(null)
+
+function onContextMenu(e) {
+  const v = view.value
+  if (!v) return
+  const { from, to } = v.state.selection.main
+  if (from === to) return
+  const sel = v.state.sliceDoc(from, to)
+  if (!sel.trim()) return
+  e.preventDefault()
+  // 视口贴边:菜单大约 140x40,留 8px 边距
+  const w = 160
+  const h = 44
+  const vw = window.innerWidth
+  const vh = window.innerHeight
+  menuX.value = Math.min(e.clientX, vw - w - 8)
+  menuY.value = Math.min(e.clientY, vh - h - 8)
+  showMenu()
+}
+
+function showMenu() {
+  menuVisible.value = true
+  // 延后挂全局监听,避免本次 contextmenu 事件冒泡到 document 立刻关掉自己
+  setTimeout(() => {
+    document.addEventListener('mousedown', onDocMouseDown, true)
+    document.addEventListener('contextmenu', onDocContextMenu, true)
+    document.addEventListener('keydown', onDocKeyDown, true)
+  }, 0)
+}
+
+function hideMenu() {
+  if (!menuVisible.value) return
+  menuVisible.value = false
+  document.removeEventListener('mousedown', onDocMouseDown, true)
+  document.removeEventListener('contextmenu', onDocContextMenu, true)
+  document.removeEventListener('keydown', onDocKeyDown, true)
+}
+
+function onDocMouseDown(e) {
+  if (!menuEl.value?.contains(e.target)) hideMenu()
+}
+function onDocContextMenu(e) {
+  if (!menuEl.value?.contains(e.target)) hideMenu()
+}
+function onDocKeyDown(e) {
+  if (e.key === 'Escape') hideMenu()
+}
+
+function onMenuRewrite() {
+  const v = view.value
+  hideMenu()
+  if (!v) return
+  const { from, to } = v.state.selection.main
+  if (from === to) return
+  const sel = v.state.sliceDoc(from, to)
+  if (!sel.trim()) return
+  emit('request-rewrite', sel)
+}
 </script>
 
 <template>
@@ -276,7 +340,22 @@ async function onRestored(updatedChapter) {
         历史
       </el-button>
     </div>
-    <div class="cm-host" ref="containerEl" v-loading="loading"></div>
+    <div class="cm-host" ref="containerEl" v-loading="loading" @contextmenu="onContextMenu"></div>
+
+    <Teleport to="body">
+      <ul
+        v-if="menuVisible"
+        ref="menuEl"
+        class="ai-context-menu"
+        :style="{ left: menuX + 'px', top: menuY + 'px' }"
+        @contextmenu.prevent
+      >
+        <li class="ai-context-menu-item" @click="onMenuRewrite">
+          <el-icon><Edit /></el-icon>
+          <span>{{ t('ai.rewrite') }}</span>
+        </li>
+      </ul>
+    </Teleport>
 
     <ChapterHistoryDialog
       v-model="historyVisible"
@@ -338,5 +417,35 @@ async function onRestored(updatedChapter) {
 }
 .cm-host :deep(.cm-editor.cm-focused) {
   outline: none;
+}
+</style>
+
+<style>
+/* 右键菜单经 Teleport 挂到 body,scoped 选择器失效,这里用全局样式 */
+.ai-context-menu {
+  position: fixed;
+  z-index: 3000;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: #fff;
+  border: 1px solid #e5e6eb;
+  border-radius: 6px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+  min-width: 140px;
+  font-size: 13px;
+  color: #1d2129;
+  user-select: none;
+}
+.ai-context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.ai-context-menu-item:hover {
+  background: #f2f3f5;
 }
 </style>

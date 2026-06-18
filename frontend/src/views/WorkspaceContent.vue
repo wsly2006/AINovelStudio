@@ -546,6 +546,7 @@ async function autoIndexAfterAI() {
         :chapter-id="selectedChapter.id"
         class="editor-host"
         @saved="onEditorSaved"
+        @request-rewrite="onAIRewrite"
       />
     </div>
   </main>
