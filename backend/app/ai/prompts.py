@@ -284,3 +284,17 @@ def build_score_messages(
         "chapter_content": chapter.content or "",
     }
     return prompt_service.render(db, "chapter.score", values)
+
+
+def build_style_check_messages(
+    project: Project,
+    chapter: Chapter,
+    *,
+    db=None,
+) -> list[dict]:
+    values = {
+        "project_info": _project_context(project),
+        "chapter_label": _chapter_label(chapter),
+        "chapter_content": chapter.content or "",
+    }
+    return prompt_service.render(db, "chapter.style_check", values)

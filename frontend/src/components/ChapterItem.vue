@@ -44,6 +44,14 @@ const scoreColor = computed(() => {
   return '#f53f3f'
 })
 
+// 文风徽章:0 处显示绿色对勾,>0 显示红色数字,从未检查过(null)不显示
+const styleCount = computed(() => props.chapter.latest_style_issue_count ?? null)
+const styleColor = computed(() => {
+  const n = styleCount.value
+  if (n == null) return ''
+  return n === 0 ? '#00b42a' : '#f53f3f'
+})
+
 function onCommand(cmd) {
   if (cmd === 'rename') emit('rename', props.chapter)
   else if (cmd === 'delete') emit('delete', props.chapter)
@@ -75,6 +83,19 @@ function onCommand(cmd) {
     <div class="row2">
       <el-tag :type="statusType" size="small" effect="plain">{{ statusText }}</el-tag>
       <span class="words">{{ wordCountText }}</span>
+      <span
+        v-if="styleCount != null"
+        class="style-badge"
+        :style="{ background: styleColor }"
+        :title="
+          styleCount === 0
+            ? 'AI 文风检查:无明显 AI 味段落'
+            : `AI 文风检查:发现 ${styleCount} 处需重写`
+        "
+      >
+        <span v-if="styleCount === 0">✓</span>
+        <span v-else>AI×{{ styleCount }}</span>
+      </span>
       <span
         v-if="score != null"
         class="score-badge"
@@ -159,5 +180,25 @@ function onCommand(cmd) {
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   line-height: 1;
+}
+.style-badge {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 9px;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+/* 文风 + 评分两个徽章并存时,只让前者占用 margin-left:auto,
+   后者紧贴文风徽章右侧 */
+.style-badge + .score-badge {
+  margin-left: 4px;
 }
 </style>

@@ -113,6 +113,17 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     }
   }
 
+  // 文风检查对话框创建/删除后,刷新本章列表里的「AI 味」徽章计数
+  function applyLatestStyleIssueCount(chapterId, count) {
+    const i = chapters.value.findIndex((c) => c.id === chapterId)
+    if (i >= 0) {
+      chapters.value[i] = {
+        ...chapters.value[i],
+        latest_style_issue_count: count,
+      }
+    }
+  }
+
   function reset() {
     project.value = null
     chapters.value = []
@@ -133,6 +144,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     select,
     applyContentSaved,
     applyLatestScore,
+    applyLatestStyleIssueCount,
     reset,
   }
 })

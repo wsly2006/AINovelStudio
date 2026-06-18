@@ -7,6 +7,7 @@ from app.api import (
     ai,
     analysis,
     chapter_scores,
+    chapter_style_checks,
     chapter_versions,
     chapters,
     characters,
@@ -69,6 +70,7 @@ app.include_router(chapters.project_router)
 app.include_router(chapters.chapter_router)
 app.include_router(chapter_versions.router)
 app.include_router(chapter_scores.router)
+app.include_router(chapter_style_checks.router)
 app.include_router(characters.project_router)
 app.include_router(characters.character_router)
 app.include_router(analysis.relation_project_router)

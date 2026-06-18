@@ -13,8 +13,10 @@ import ChapterCreateDialog from '../components/ChapterCreateDialog.vue'
 import AIToolbar from '../components/AIToolbar.vue'
 import AIGenerateDrawer from '../components/AIGenerateDrawer.vue'
 import ChapterScoreDialog from '../components/ChapterScoreDialog.vue'
+import ChapterStyleDialog from '../components/ChapterStyleDialog.vue'
 import { formatChapterFullTitle } from '../composables/chapterTitle'
 import { indexChapter } from '../composables/indexChapter'
+import { locateQuote } from '../composables/locateQuote'
 import { chapterVersionsApi } from '../api/chapterVersions'
 
 const route = useRoute()
@@ -29,6 +31,7 @@ const drawerVisible = ref(false)
 const drawerMode = ref('generate')
 const drawerSelection = ref('')
 const drawerCursorText = ref('')
+const drawerInitialInstruction = ref('')
 
 const dialogVisible = ref(false)
 const dialogMode = ref('create') // 'create' | 'rename' | 'edit'
@@ -39,6 +42,8 @@ const dialogTargetId = ref(null)
 
 // AI 评分对话框
 const scoreVisible = ref(false)
+// AI 文风检查对话框
+const styleVisible = ref(false)
 
 const selectedChapter = computed(
   () => store.chapters.find((c) => c.id === store.selectedId) || null
@@ -349,9 +354,40 @@ async function onAIScore() {
   scoreVisible.value = true
 }
 
+async function onAIStyleCheck() {
+  if (!selectedChapter.value) return
+  await flushEditor()
+  styleVisible.value = true
+}
+
 // 评分弹窗里 创建/删除 后通知列表更新分数徽章
 function onScoreChanged({ chapterId, latestOverall }) {
   store.applyLatestScore(chapterId, latestOverall)
+}
+
+// 文风检查弹窗里 创建/删除 后通知列表更新「AI 味」徽章
+function onStyleChanged({ chapterId, latestIssueCount }) {
+  store.applyLatestStyleIssueCount(chapterId, latestIssueCount)
+}
+
+// 文风检查面板「去改写」:在编辑器里定位 quote 并打开改写抽屉
+function onStyleJumpRewrite({ quote, suggestion, why, kind }) {
+  const ed = editorRef.value
+  if (!ed || !quote) return
+  const content = ed.getContent() || ''
+  const span = locateQuote(content, quote)
+  if (!span) {
+    ElMessage.warning('在正文中找不到对应片段,可能已被改写过。请手动选中后再用「改写选区」。')
+    return
+  }
+  ed.selectRange(span[0], span[1])
+  // 把 AI 给的「重写方向」预填进改写抽屉,再让用户拍板
+  drawerSelection.value = content.slice(span[0], span[1])
+  drawerInitialInstruction.value = suggestion
+    ? `${suggestion}(原因:${why || kind || 'AI 味较重'})`
+    : `去掉 AI 味:${why || kind || ''}`.trim()
+  drawerMode.value = 'rewrite'
+  drawerVisible.value = true
 }
 
 async function onDrawerReplace(text) {
@@ -398,6 +434,7 @@ async function onDrawerAccept(text) {
         <AIToolbar
           :indexing="indexing"
           @generate="onAIGenerate"
+          @style-check="onAIStyleCheck"
           @continue="onAIContinue"
           @rewrite="onAIRewrite"
           @summarize="onAISummarize"
@@ -435,6 +472,7 @@ async function onDrawerAccept(text) {
     :world-entities="projectWorld"
     :items="projectItems"
     :default-target-word-count="store.project?.words_per_chapter || 4000"
+    :initial-instruction="drawerInitialInstruction"
     @replace="onDrawerReplace"
     @append="onDrawerAppend"
     @insert="onDrawerInsert"
@@ -455,6 +493,14 @@ async function onDrawerAccept(text) {
     :chapter-id="selectedChapter?.id || null"
     :chapter-title="selectedChapterFullTitle"
     @changed="onScoreChanged"
+  />
+
+  <ChapterStyleDialog
+    v-model="styleVisible"
+    :chapter-id="selectedChapter?.id || null"
+    :chapter-title="selectedChapterFullTitle"
+    @changed="onStyleChanged"
+    @jump-rewrite="onStyleJumpRewrite"
   />
 </template>
 

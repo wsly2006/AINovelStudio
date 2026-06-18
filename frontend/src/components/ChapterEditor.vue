@@ -97,6 +97,19 @@ defineExpose({
     })
     v.focus()
   },
+  // 用于「AI 文风检查」跳到具体片段并选中,parent 拿到 quote 位置后调过来
+  selectRange: (from, to) => {
+    const v = view.value
+    if (!v) return
+    const max = v.state.doc.length
+    const a = Math.max(0, Math.min(from, max))
+    const b = Math.max(0, Math.min(to, max))
+    v.dispatch({
+      selection: { anchor: a, head: b },
+      effects: EditorView.scrollIntoView(a, { y: 'center' }),
+    })
+    v.focus()
+  },
 })
 
 const stateText = computed(() => {

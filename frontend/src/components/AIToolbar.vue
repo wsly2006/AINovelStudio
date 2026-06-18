@@ -1,13 +1,13 @@
 <script setup>
 import { onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { MagicStick, Edit, EditPen, Document, Connection, StarFilled } from '@element-plus/icons-vue'
+import { MagicStick, Edit, EditPen, Document, Connection, StarFilled, View } from '@element-plus/icons-vue'
 import { useAIInfoStore } from '../stores/aiInfo'
 
 const props = defineProps({
   indexing: { type: Boolean, default: false },
 })
-const emit = defineEmits(['generate', 'continue', 'rewrite', 'summarize', 'index', 'score'])
+const emit = defineEmits(['generate', 'continue', 'rewrite', 'summarize', 'index', 'score', 'styleCheck'])
 
 const { t } = useI18n()
 const info = useAIInfoStore()
@@ -23,6 +23,9 @@ const disabled = computed(() => !info.configured)
   <div class="ai-toolbar">
     <el-button :disabled="disabled" :icon="MagicStick" @click="emit('generate')">
       {{ t('ai.generate') }}
+    </el-button>
+    <el-button :disabled="disabled" :icon="View" @click="emit('styleCheck')">
+      AI 文风检查
     </el-button>
     <el-button :disabled="disabled" :icon="EditPen" @click="emit('continue')">
       {{ t('ai.continueWriting') }}

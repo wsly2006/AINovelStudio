@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.models.chapter import Chapter
 from app.models.chapter_score import ChapterScore
+from app.models.chapter_style_check import ChapterStyleCheck
 from app.models.project import Project
 from app.schemas.chapter import (
     ChapterCreate,
@@ -39,9 +40,11 @@ def list_chapters(db: Session, project_id: int) -> list[ChapterListItem]:
 
     # 一次性把这些章节最近一次评分的综合分捞回来,合并到列表里
     latest_scores = _load_latest_overall_scores(db, [c.id for c in rows])
+    latest_styles = _load_latest_style_issue_counts(db, [c.id for c in rows])
     items = [ChapterListItem.model_validate(c) for c in rows]
     for item in items:
         item.latest_overall_score = latest_scores.get(item.id)
+        item.latest_style_issue_count = latest_styles.get(item.id)
     return items
 
 
@@ -61,6 +64,32 @@ def _load_latest_overall_scores(
         # 只保留每个章节遇到的第一条(就是最新),后续同 chapter_id 的跳过
         if cid not in out:
             out[cid] = overall
+    return out
+
+
+def _load_latest_style_issue_counts(
+    db: Session, chapter_ids: list[int]
+) -> dict[int, int]:
+    """每个章节最近一次文风检查的命中段落数,跟 score 同款归约。"""
+    if not chapter_ids:
+        return {}
+    stmt = (
+        select(
+            ChapterStyleCheck.chapter_id,
+            ChapterStyleCheck.issues,
+            ChapterStyleCheck.created_at,
+        )
+        .where(ChapterStyleCheck.chapter_id.in_(chapter_ids))
+        .order_by(
+            ChapterStyleCheck.chapter_id,
+            ChapterStyleCheck.created_at.desc(),
+            ChapterStyleCheck.id.desc(),
+        )
+    )
+    out: dict[int, int] = {}
+    for cid, issues, _ in db.execute(stmt).all():
+        if cid not in out:
+            out[cid] = len(issues or [])
     return out
 
 

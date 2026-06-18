@@ -20,6 +20,8 @@ const props = defineProps({
   items: { type: Array, default: () => [] },
   // 工程在「新建」时填的每章字数,作为本章生成的默认目标字数
   defaultTargetWordCount: { type: Number, default: 4000 },
+  // 由「AI 文风检查」跳过来时,预填到 rewrite 抽屉的改写指令
+  initialInstruction: { type: String, default: '' },
 })
 const emit = defineEmits(['update:modelValue', 'accept', 'append', 'insert', 'replace'])
 
@@ -67,7 +69,7 @@ watch(
       phase.value = 'idle'
       errorMsg.value = ''
       if (props.mode !== 'rewrite') extraInstruction.value = ''
-      if (props.mode === 'rewrite') rewriteInstruction.value = ''
+      if (props.mode === 'rewrite') rewriteInstruction.value = props.initialInstruction || ''
       // 目标字数对齐工程「每章字数」,用户仍可在抽屉内临时改
       targetWordCount.value = Number(props.defaultTargetWordCount) || 4000
       // 默认勾选所有"主角"角色,简化首次生成

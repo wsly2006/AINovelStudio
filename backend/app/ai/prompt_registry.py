@@ -144,6 +144,48 @@ _SCORE_USER = """请评估下面这一章。
   "feedback": "200-400 字的中文反馈"
 }"""
 
+# ============ 4c. AI 文风检查 ============
+
+_STYLE_CHECK_SYSTEM = (
+    "你是一名严苛的中文小说编辑,熟悉所谓「AI 味」的常见症状:"
+    "套语化比喻(仿佛/宛如/像极了)、对仗排比堆砌、形容词副词冗余、"
+    "总分总模板结构、对话工整无个性、视角抽离的全知叙述、"
+    "「不仅…更…/不是…而是…」式模板转折等。"
+    "请只挑出确实读起来像 AI 写的段落,允许返回空数组,绝不强行凑数。"
+    "严格输出 JSON,禁止额外解释或 Markdown 代码块。"
+)
+
+_STYLE_CHECK_USER = """请审读下面这一章,挑出读起来「像 AI 写的、需要重写」的段落。
+
+工程信息:{{project_info}}
+章节标题:{{chapter_label}}
+
+正文:
+---
+{{chapter_content}}
+---
+
+要求:
+- quote 必须是从正文中**逐字摘抄**的连续片段(不要改字、不要合并标点),长度 30~120 字
+- 只挑确实有问题的段落,宁缺毋滥;若全章都过关,issues 返回空数组
+- kind 用以下标签之一:套语 / 排比堆砌 / 辞藻冗余 / 模板结构 / 对话同质 / 视角抽离 / 其他
+- why:20-50 字解释为什么读起来像 AI
+- suggestion:20-50 字给出重写方向(怎么改更像人写)
+- summary:一两句话(60-150 字)总评本章 AI 味的总体观感
+
+输出 JSON,严格遵循以下结构:
+{
+  "issues": [
+    {
+      "kind": "套语",
+      "quote": "原文中逐字摘抄的连续片段",
+      "why": "为什么读起来像 AI",
+      "suggestion": "怎么改"
+    }
+  ],
+  "summary": "总体观感"
+}"""
+
 # ============ 5. 大纲建议(创建工程时) ============
 
 _OUTLINE_SYSTEM = "你是一位经验丰富的网络小说大纲编辑,擅长长篇结构安排。"
@@ -430,6 +472,15 @@ PROMPTS: tuple[PromptDef, ...] = (
         description="对单章打分(文笔/情节/人物/综合 4 维),并给出 200~400 字反馈。",
         default_system=_SCORE_SYSTEM,
         default_user=_SCORE_USER,
+        placeholders=("project_info", "chapter_label", "chapter_content"),
+    ),
+    PromptDef(
+        key="chapter.style_check",
+        name="AI 文风检查",
+        group="analysis",
+        description="挑出本章读起来「像 AI 写」的段落,给出原文片段、问题与重写方向。",
+        default_system=_STYLE_CHECK_SYSTEM,
+        default_user=_STYLE_CHECK_USER,
         placeholders=("project_info", "chapter_label", "chapter_content"),
     ),
     PromptDef(

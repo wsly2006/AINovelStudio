@@ -42,6 +42,7 @@ def init_db() -> None:
     from app.models import ai_call_log as _ai_call_log  # noqa: F401
     from app.models import chapter as _chapter  # noqa: F401
     from app.models import chapter_score as _chapter_score  # noqa: F401
+    from app.models import chapter_style_check as _chapter_style_check  # noqa: F401
     from app.models import chapter_version as _chapter_version  # noqa: F401
     from app.models import character as _character  # noqa: F401
     from app.models import item as _item  # noqa: F401

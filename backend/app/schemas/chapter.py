@@ -55,6 +55,8 @@ class ChapterListItem(BaseModel):
     updated_at: datetime
     # 最近一次 AI 评分的综合分,未评过为 None。仅在 list 接口里填,detail 不填。
     latest_overall_score: int | None = None
+    # 最近一次 AI 文风检查命中的段落数,未检查过为 None;0 表示已检查且无命中。
+    latest_style_issue_count: int | None = None
 
 
 class ChapterDetail(ChapterListItem):
