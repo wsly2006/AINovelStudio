@@ -5,6 +5,9 @@ Project-specific overrides for AiNovelTool. Inherits from the user's global CLAU
 ## Commit conventions (overrides global)
 
 - Write commit messages in **English**.
+- Use **Conventional Commits** prefix in the title: `feat`, `fix`, `refactor`,
+  `docs`, `chore`, `test`, `style`, `perf`, `build`, `ci`. Optional scope in
+  parens, e.g. `fix(editor): ...`, `feat(workspace): ...`.
 - Do **not** prefix titles with `[Claude]`.
 - Do **not** append `Co-Authored-By` or other trailers.
 - Title stays under 70 chars; body explains the *why*.
