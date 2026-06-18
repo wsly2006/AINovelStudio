@@ -27,6 +27,8 @@ const props = defineProps({
   initialBeats: { type: Array, default: () => [] },
   // 当前章节的对账结果,供 generate 模式在节拍编辑里显示徽章
   initialAlignment: { type: Array, default: () => [] },
+  // 章节当前是否已有正文。已有就把按钮文案从「开始生成」改成「重新生成」
+  chapterHasContent: { type: Boolean, default: false },
   // 工程在「新建」时填的每章字数,作为本章生成的默认目标字数
   defaultTargetWordCount: { type: Number, default: 4000 },
   // 由「AI 文风检查」跳过来时,预填到 rewrite 抽屉的改写指令
@@ -410,7 +412,7 @@ function onReplaceSelection() {
         :disabled="!canStart"
         @click="start"
       >
-        {{ phase === 'idle' ? t('ai.start') : '重新生成' }}
+        {{ (mode === 'generate' && (phase !== 'idle' || chapterHasContent)) ? '重新生成' : t('ai.start') }}
       </el-button>
       <el-button v-else type="danger" @click="stop">{{ t('ai.stop') }}</el-button>
     </div>

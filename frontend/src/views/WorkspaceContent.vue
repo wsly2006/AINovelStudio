@@ -562,6 +562,7 @@ async function autoIndexAfterAI() {
     :threads="projectThreads"
     :initial-beats="currentChapterBeats"
     :initial-alignment="currentChapterAlignment"
+    :chapter-has-content="(selectedChapter?.word_count || 0) > 0"
     :default-target-word-count="store.project?.words_per_chapter || 4000"
     :initial-instruction="drawerInitialInstruction"
     @replace="onDrawerReplace"
