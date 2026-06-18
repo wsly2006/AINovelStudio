@@ -53,6 +53,8 @@ class ChapterListItem(BaseModel):
     word_count: int
     created_at: datetime
     updated_at: datetime
+    # 最近一次 AI 评分的综合分,未评过为 None。仅在 list 接口里填,detail 不填。
+    latest_overall_score: int | None = None
 
 
 class ChapterDetail(ChapterListItem):

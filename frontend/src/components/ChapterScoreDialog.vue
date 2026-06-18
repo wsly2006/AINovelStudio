@@ -9,7 +9,7 @@ const props = defineProps({
   chapterId: { type: Number, default: null },
   chapterTitle: { type: String, default: '' },
 })
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits(['update:modelValue', 'changed'])
 
 const loading = ref(false)
 const scoring = ref(false)
@@ -51,6 +51,7 @@ async function onScore() {
     const created = await chapterScoresApi.create(props.chapterId)
     items.value = [created, ...items.value]
     selectedId.value = created.id
+    emit('changed', { chapterId: props.chapterId, latestOverall: created.overall })
     ElMessage.success('评分完成')
   } catch (e) {
     const detail = e?.response?.data?.detail || e.message || '评分失败'
@@ -75,6 +76,11 @@ async function onDelete(s) {
     const wasSelected = selectedId.value === s.id
     items.value = items.value.filter((x) => x.id !== s.id)
     if (wasSelected) selectedId.value = items.value[0]?.id || null
+    // 删完之后用余下最新的一条更新列表徽章;全删完则传 null
+    emit('changed', {
+      chapterId: props.chapterId,
+      latestOverall: items.value[0]?.overall ?? null,
+    })
     ElMessage.success('已删除')
   } catch (e) {
     ElMessage.error(e.message || '删除失败')

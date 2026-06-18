@@ -143,3 +143,37 @@ def test_delete_score_rejects_mismatched_chapter(
     assert r.status_code == 404
     # 原章节下还在
     assert len(client.get(f"/api/chapters/{c1}/scores").json()) == 1
+
+
+def test_chapter_list_includes_latest_overall_score(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    cid = _make_chapter(client)
+    project_id = client.get(f"/api/chapters/{cid}").json()["project_id"]
+
+    # 评分前列表里 latest_overall_score 应为 None
+    pre = client.get(f"/api/projects/{project_id}/chapters").json()
+    assert pre[0]["latest_overall_score"] is None
+
+    # 第一次评 7 分
+    monkeypatch.setattr(
+        ai_client_module,
+        "complete",
+        _stub_complete(
+            '{"writing": 6, "plot": 7, "characters": 8, "overall": 7, "feedback": ""}'
+        ),
+    )
+    client.post(f"/api/chapters/{cid}/scores")
+
+    # 第二次评 9 分,列表应反映最新一次
+    monkeypatch.setattr(
+        ai_client_module,
+        "complete",
+        _stub_complete(
+            '{"writing": 9, "plot": 9, "characters": 9, "overall": 9, "feedback": ""}'
+        ),
+    )
+    client.post(f"/api/chapters/{cid}/scores")
+
+    after = client.get(f"/api/projects/{project_id}/chapters").json()
+    assert after[0]["latest_overall_score"] == 9

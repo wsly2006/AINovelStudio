@@ -33,6 +33,17 @@ const statusType = computed(() => {
   return { draft: 'info', writing: 'warning', done: 'success' }[props.chapter.status] || 'info'
 })
 
+// 评分徽章:有分才显示,颜色按分段
+const score = computed(() => props.chapter.latest_overall_score ?? null)
+const scoreColor = computed(() => {
+  const n = score.value
+  if (n == null) return ''
+  if (n >= 9) return '#00b42a'
+  if (n >= 7) return '#4080ff'
+  if (n >= 5) return '#ff7d00'
+  return '#f53f3f'
+})
+
 function onCommand(cmd) {
   if (cmd === 'rename') emit('rename', props.chapter)
   else if (cmd === 'delete') emit('delete', props.chapter)
@@ -64,6 +75,14 @@ function onCommand(cmd) {
     <div class="row2">
       <el-tag :type="statusType" size="small" effect="plain">{{ statusText }}</el-tag>
       <span class="words">{{ wordCountText }}</span>
+      <span
+        v-if="score != null"
+        class="score-badge"
+        :style="{ background: scoreColor }"
+        :title="`AI 综合评分:${score}/10`"
+      >
+        {{ score }}
+      </span>
     </div>
   </div>
 </template>
@@ -124,5 +143,21 @@ function onCommand(cmd) {
 .words {
   font-size: 12px;
   color: #86909c;
+}
+.score-badge {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: #4080ff;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
 }
 </style>

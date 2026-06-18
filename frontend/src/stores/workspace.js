@@ -102,6 +102,17 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     }
   }
 
+  // 评分对话框创建/删除评分后调用,刷新本章在列表里的分数徽章
+  function applyLatestScore(chapterId, overall) {
+    const i = chapters.value.findIndex((c) => c.id === chapterId)
+    if (i >= 0) {
+      chapters.value[i] = {
+        ...chapters.value[i],
+        latest_overall_score: overall,
+      }
+    }
+  }
+
   function reset() {
     project.value = null
     chapters.value = []
@@ -121,6 +132,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     reorder,
     select,
     applyContentSaved,
+    applyLatestScore,
     reset,
   }
 })

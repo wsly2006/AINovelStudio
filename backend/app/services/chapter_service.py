@@ -2,6 +2,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.chapter import Chapter
+from app.models.chapter_score import ChapterScore
 from app.models.project import Project
 from app.schemas.chapter import (
     ChapterCreate,
@@ -35,7 +36,32 @@ def list_chapters(db: Session, project_id: int) -> list[ChapterListItem]:
         raise ProjectNotFoundForChapterError(project_id)
     stmt = select(Chapter).where(Chapter.project_id == project_id).order_by(Chapter.order_index)
     rows = db.execute(stmt).scalars().all()
-    return [ChapterListItem.model_validate(c) for c in rows]
+
+    # 一次性把这些章节最近一次评分的综合分捞回来,合并到列表里
+    latest_scores = _load_latest_overall_scores(db, [c.id for c in rows])
+    items = [ChapterListItem.model_validate(c) for c in rows]
+    for item in items:
+        item.latest_overall_score = latest_scores.get(item.id)
+    return items
+
+
+def _load_latest_overall_scores(
+    db: Session, chapter_ids: list[int]
+) -> dict[int, int]:
+    """每个章节最近一次评分的 overall。N 章的 N 通常很小,简单的 Python 归约即可。"""
+    if not chapter_ids:
+        return {}
+    stmt = (
+        select(ChapterScore.chapter_id, ChapterScore.overall, ChapterScore.created_at)
+        .where(ChapterScore.chapter_id.in_(chapter_ids))
+        .order_by(ChapterScore.chapter_id, ChapterScore.created_at.desc(), ChapterScore.id.desc())
+    )
+    out: dict[int, int] = {}
+    for cid, overall, _ in db.execute(stmt).all():
+        # 只保留每个章节遇到的第一条(就是最新),后续同 chapter_id 的跳过
+        if cid not in out:
+            out[cid] = overall
+    return out
 
 
 def get_chapter(db: Session, chapter_id: int) -> ChapterDetail:

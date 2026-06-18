@@ -349,6 +349,11 @@ async function onAIScore() {
   scoreVisible.value = true
 }
 
+// 评分弹窗里 创建/删除 后通知列表更新分数徽章
+function onScoreChanged({ chapterId, latestOverall }) {
+  store.applyLatestScore(chapterId, latestOverall)
+}
+
 async function onDrawerReplace(text) {
   await snapshotBeforeAI()
   editorRef.value?.replaceAll(text)
@@ -449,6 +454,7 @@ async function onDrawerAccept(text) {
     v-model="scoreVisible"
     :chapter-id="selectedChapter?.id || null"
     :chapter-title="selectedChapterFullTitle"
+    @changed="onScoreChanged"
   />
 </template>
 
