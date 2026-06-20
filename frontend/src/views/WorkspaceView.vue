@@ -11,6 +11,7 @@ import { useLaddersStore } from '../stores/ladders'
 import { useTasksStore } from '../stores/tasks'
 import { useAIInfoStore } from '../stores/aiInfo'
 import { useThemeStore } from '../stores/theme'
+import { useAssistantStore } from '../stores/assistant'
 import AIConfigDialog from '../components/AIConfigDialog.vue'
 import PromptManagerDialog from '../components/PromptManagerDialog.vue'
 import ProjectEditDialog from '../components/ProjectEditDialog.vue'
@@ -25,6 +26,7 @@ const laddersStore = useLaddersStore()
 const tasksStore = useTasksStore()
 const aiInfo = useAIInfoStore()
 const theme = useThemeStore()
+const assistantStore = useAssistantStore()
 const { t } = useI18n()
 
 const projectId = computed(() => Number(props.id))
@@ -101,6 +103,7 @@ onBeforeUnmount(() => {
   worldStore.reset()
   laddersStore.reset()
   tasksStore.reset()
+  assistantStore.reset()
 })
 
 function onAIConfigSaved() {

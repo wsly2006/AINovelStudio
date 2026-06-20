@@ -12,6 +12,7 @@ import ChapterEditor from '../components/ChapterEditor.vue'
 import ChapterCreateDialog from '../components/ChapterCreateDialog.vue'
 import AIToolbar from '../components/AIToolbar.vue'
 import AIGenerateDrawer from '../components/AIGenerateDrawer.vue'
+import AIAssistantDrawer from '../components/AIAssistantDrawer.vue'
 import ChapterScoreDialog from '../components/ChapterScoreDialog.vue'
 import ChapterStyleDialog from '../components/ChapterStyleDialog.vue'
 import ChapterBeatsDialog from '../components/ChapterBeatsDialog.vue'
@@ -35,6 +36,10 @@ const drawerMode = ref('generate')
 const drawerSelection = ref('')
 const drawerCursorText = ref('')
 const drawerInitialInstruction = ref('')
+
+// AI 助手抽屉:基于工程/章节/选区的多轮对话
+const assistantVisible = ref(false)
+const assistantSelection = ref('')
 
 const dialogVisible = ref(false)
 const dialogMode = ref('create') // 'create' | 'rename' | 'edit'
@@ -313,6 +318,32 @@ async function onAIRewrite() {
   drawerVisible.value = true
 }
 
+// AI 助手:打开抽屉前抓一次当前选区(打开后选区会随用户切换变化,但首次打开取当下值即可)
+async function onAIAssistant() {
+  await flushEditor()
+  assistantSelection.value = editorRef.value?.getSelection?.() || ''
+  assistantVisible.value = true
+}
+
+async function onAssistantInsert(text) {
+  await snapshotBeforeAI()
+  editorRef.value?.insertAtCursor(text)
+}
+async function onAssistantReplace(text) {
+  if (!editorRef.value) return
+  const sel = editorRef.value.getSelection?.() || ''
+  if (!sel) {
+    ElMessage.warning(t('ai.selectionEmpty'))
+    return
+  }
+  await snapshotBeforeAI()
+  editorRef.value.replaceSelection(text)
+}
+async function onAssistantAppend(text) {
+  await snapshotBeforeAI()
+  editorRef.value?.appendToEnd(text)
+}
+
 async function onAISummarize() {
   if (!selectedChapter.value) return
   await flushEditor()
@@ -528,6 +559,7 @@ async function autoIndexAfterAI() {
           @summarize="onAISummarize"
           @index="onIndexChapter"
           @score="onAIScore"
+          @assistant="onAIAssistant"
         />
       </div>
       <el-input
@@ -606,6 +638,17 @@ async function autoIndexAfterAI() {
     :threads="projectThreads"
     :target-word-count="store.project?.words_per_chapter || 4000"
     @saved="onBeatsSaved"
+  />
+
+  <AIAssistantDrawer
+    v-model="assistantVisible"
+    :project-id="store.project?.id || null"
+    :chapter-id="selectedChapter?.id || null"
+    :chapter-title="selectedChapterFullTitle"
+    :selection-text="assistantSelection"
+    @insert-to-cursor="onAssistantInsert"
+    @replace-selection="onAssistantReplace"
+    @append-to-end="onAssistantAppend"
   />
 </template>
 

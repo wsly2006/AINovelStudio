@@ -404,3 +404,71 @@ def build_style_check_messages(
         "chapter_content": chapter.content or "",
     }
     return prompt_service.render(db, "chapter.style_check", values)
+
+
+# 助手对话上下文里塞进去的当前章节正文截断长度,避免单章超长把 prompt 撑爆
+_ASSISTANT_CHAPTER_MAX_CHARS = 8000
+
+
+def _assistant_chapter_block(
+    chapter: Chapter | None, include_content: bool
+) -> str:
+    if chapter is None:
+        return ""
+    label = _chapter_label(chapter)
+    head = f"当前章节:{label}"
+    if (chapter.summary or "").strip():
+        head += f"\n章节梗概:{chapter.summary.strip()}"
+    if not include_content:
+        return head
+    text = (chapter.content or "").strip()
+    if not text:
+        return head + "\n本章正文为空。"
+    if len(text) > _ASSISTANT_CHAPTER_MAX_CHARS:
+        # 长章节只取末尾,留下「光标附近」上下文
+        text = "…(已省略前文)\n" + text[-_ASSISTANT_CHAPTER_MAX_CHARS:]
+    return head + "\n本章正文:\n---\n" + text + "\n---"
+
+
+def _assistant_selection_block(selection: str | None) -> str:
+    selection = (selection or "").strip()
+    if not selection:
+        return ""
+    return "用户在编辑器中选中的片段:\n---\n" + selection + "\n---"
+
+
+def build_assistant_messages(
+    project: Project,
+    *,
+    user_message: str,
+    chapter: Chapter | None = None,
+    include_chapter_content: bool = True,
+    characters: list[Character] | None = None,
+    world_entities: list[WorldEntity] | None = None,
+    items: list[Item] | None = None,
+    plot_threads: list[PlotThread] | None = None,
+    selection_text: str | None = None,
+    history: list[dict] | None = None,
+    db=None,
+) -> list[dict]:
+    """组装助手 messages。
+
+    history 是已有的多轮对话(role/content),会插在 system 与本轮 user 之间;
+    本轮 user 用注册的 prompt 模板渲染,塞入工程 / 章节 / 选区上下文。
+    """
+    values = {
+        "project_info": _project_context(project),
+        "synopsis_block": _synopsis_context(project),
+        "threads_block": _threads_context(plot_threads or []),
+        "characters_block": _characters_context(characters or []),
+        "world_block": _world_context(world_entities or []),
+        "items_block": _items_context(items or []),
+        "chapter_block": _assistant_chapter_block(chapter, include_chapter_content),
+        "selection_block": _assistant_selection_block(selection_text),
+        "user_message": (user_message or "").strip(),
+    }
+    rendered = prompt_service.render(db, "assistant.chat", values)
+    # rendered = [system, user(本轮)];把历史 turn 插在中间
+    system_msg = rendered[0]
+    current_user = rendered[1]
+    return [system_msg, *(history or []), current_user]

@@ -1,13 +1,13 @@
 <script setup>
 import { onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { MagicStick, Edit, EditPen, Document, Connection, StarFilled, View, Tickets } from '@element-plus/icons-vue'
+import { MagicStick, Edit, EditPen, Document, Connection, StarFilled, View, Tickets, ChatLineRound } from '@element-plus/icons-vue'
 import { useAIInfoStore } from '../stores/aiInfo'
 
 const props = defineProps({
   indexing: { type: Boolean, default: false },
 })
-const emit = defineEmits(['generate', 'continue', 'rewrite', 'summarize', 'index', 'score', 'styleCheck', 'beats'])
+const emit = defineEmits(['generate', 'continue', 'rewrite', 'summarize', 'index', 'score', 'styleCheck', 'beats', 'assistant'])
 
 const { t } = useI18n()
 const info = useAIInfoStore()
@@ -64,6 +64,11 @@ const disabled = computed(() => !info.configured)
     <el-tooltip content="文笔 / 情节 / 人物 / 综合 4 维 AI 评分,留历史曲线" placement="top" :show-after="300">
       <el-button :disabled="disabled" :icon="StarFilled" @click="emit('score')">
         评分
+      </el-button>
+    </el-tooltip>
+    <el-tooltip content="打开 AI 助手对话:基于当前工程 / 章节 / 选区多轮交流,可一键插入到编辑器" placement="top" :show-after="300">
+      <el-button :disabled="disabled" :icon="ChatLineRound" @click="emit('assistant')">
+        AI 助手
       </el-button>
     </el-tooltip>
   </div>

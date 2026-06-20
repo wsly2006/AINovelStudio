@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import (
     ai,
+    ai_assistant,
     analysis,
     chapter_scores,
     chapter_style_checks,
@@ -96,6 +97,7 @@ app.include_router(state_events.snapshot_router)
 app.include_router(tasks.project_router)
 app.include_router(tasks.task_router)
 app.include_router(ai.router)
+app.include_router(ai_assistant.router)
 app.include_router(settings_api.router)
 app.include_router(prompts.router)
 app.include_router(export.router)

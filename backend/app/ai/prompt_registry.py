@@ -527,6 +527,36 @@ _EXTRACT_PLOT_USER = """已知人物列表(用 id 引用):
   ]
 }"""
 
+# ============ 9b. AI 助手对话 ============
+
+_ASSISTANT_SYSTEM = (
+    "你是这本中文小说的随身写作助手,既懂创作也懂策划。"
+    "回答以下面提供的工程上下文为准:总纲 / 主线 / 当前章节 / 已写片段 / 选区。"
+    "若用户让你写正文片段,直接输出文字,不要包含解释、不要使用 Markdown 代码块,"
+    "段落之间只用单个换行符;若用户问问题或要建议,用简明中文回答,可以分点。"
+    "不要编造未在上下文中出现的人物、地点、设定;不确定时请明说。"
+)
+
+_ASSISTANT_USER = """{{project_info}}
+
+{{synopsis_block}}
+
+{{threads_block}}
+
+{{characters_block}}
+
+{{world_block}}
+
+{{items_block}}
+
+{{chapter_block}}
+
+{{selection_block}}
+
+用户提问:
+{{user_message}}"""
+
+
 # ============ 10. 情节自检 ============
 
 _CHECK_SYSTEM = (
@@ -734,6 +764,19 @@ PROMPTS: tuple[PromptDef, ...] = (
         default_system=_CHECK_SYSTEM,
         default_user=_CHECK_USER,
         placeholders=("project_name", "characters_brief", "events_brief"),
+    ),
+    PromptDef(
+        key="assistant.chat",
+        name="AI 助手对话",
+        group="writing",
+        description="工作区右侧 AI 助手:基于工程上下文(总纲 / 主线 / 章节 / 选区)多轮对话。",
+        default_system=_ASSISTANT_SYSTEM,
+        default_user=_ASSISTANT_USER,
+        placeholders=(
+            "project_info", "synopsis_block", "threads_block",
+            "characters_block", "world_block", "items_block",
+            "chapter_block", "selection_block", "user_message",
+        ),
     ),
 )
 
