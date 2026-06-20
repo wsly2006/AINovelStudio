@@ -1,13 +1,13 @@
 <script setup>
 import { onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { MagicStick, Edit, EditPen, Document, Connection, StarFilled, View, Tickets, ChatLineRound } from '@element-plus/icons-vue'
+import { MagicStick, Edit, EditPen, Document, Connection, StarFilled, View, Tickets, ChatLineRound, VideoPlay } from '@element-plus/icons-vue'
 import { useAIInfoStore } from '../stores/aiInfo'
 
 const props = defineProps({
   indexing: { type: Boolean, default: false },
 })
-const emit = defineEmits(['generate', 'continue', 'rewrite', 'summarize', 'index', 'score', 'styleCheck', 'beats', 'assistant'])
+const emit = defineEmits(['generate', 'continue', 'rewrite', 'summarize', 'index', 'score', 'styleCheck', 'beats', 'assistant', 'autoWrite'])
 
 const { t } = useI18n()
 const info = useAIInfoStore()
@@ -29,6 +29,11 @@ const disabled = computed(() => !info.configured)
     <el-tooltip content="整章 AI 生成,自动注入总纲/主线/节拍/人物/世界观" placement="top" :show-after="300">
       <el-button :disabled="disabled" :icon="MagicStick" @click="emit('generate')">
         {{ t('ai.generate') }}
+      </el-button>
+    </el-tooltip>
+    <el-tooltip content="选起点 + 章数,后台连续生成,每章自动索引/对账/评分,质量不达标按模式重试或停下" placement="top" :show-after="300">
+      <el-button :disabled="disabled" :icon="VideoPlay" @click="emit('autoWrite')">
+        自动连写
       </el-button>
     </el-tooltip>
     <el-tooltip content="挑出读起来「像 AI 写」的段落,给出改写方向,可一键定位编辑器" placement="top" :show-after="300">

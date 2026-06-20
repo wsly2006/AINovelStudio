@@ -16,6 +16,8 @@ import AIAssistantDrawer from '../components/AIAssistantDrawer.vue'
 import ChapterScoreDialog from '../components/ChapterScoreDialog.vue'
 import ChapterStyleDialog from '../components/ChapterStyleDialog.vue'
 import ChapterBeatsDialog from '../components/ChapterBeatsDialog.vue'
+import AutoWriteDialog from '../components/AutoWriteDialog.vue'
+import AutoWriteProgressDrawer from '../components/AutoWriteProgressDrawer.vue'
 import { formatChapterFullTitle } from '../composables/chapterTitle'
 import { indexChapter } from '../composables/indexChapter'
 import { locateQuote } from '../composables/locateQuote'
@@ -52,6 +54,14 @@ const dialogTargetId = ref(null)
 const scoreVisible = ref(false)
 // AI 文风检查对话框
 const styleVisible = ref(false)
+
+// 自动连写
+const autoWriteDialogVisible = ref(false)
+const autoWriteProgressVisible = ref(false)
+const autoWriteTaskId = ref('')
+const autoWriteChapterIds = ref([])
+const autoWriteMode = ref('auto_fix')
+const autoWriteThreshold = ref(70)
 
 // 节拍对话框 + 当前章节的最新节拍。打开抽屉/对话框前实时拉,免得改了章节后用旧值
 const beatsDialogVisible = ref(false)
@@ -279,6 +289,35 @@ async function onAIGenerate() {
   await fetchCurrentBeats()
   drawerMode.value = 'generate'
   drawerVisible.value = true
+}
+
+// 自动连写:打开配置对话框,刷新最新章节列表后再开
+async function onAIAutoWrite() {
+  await flushEditor()
+  await flushSummary()
+  autoWriteDialogVisible.value = true
+}
+
+// 配置对话框点「开始连写」后的回调:接住 task_id,打开进度抽屉
+function onAutoWriteStarted({ taskId, chapterIds, mode, scoreThreshold }) {
+  autoWriteTaskId.value = taskId
+  autoWriteChapterIds.value = chapterIds || []
+  autoWriteMode.value = mode || 'auto_fix'
+  autoWriteThreshold.value = scoreThreshold || 70
+  autoWriteProgressVisible.value = true
+}
+
+// 自动连写跑完后:刷一遍章节列表 + 知识库,让侧栏的字数 / 评分徽章同步
+async function onAutoWriteFinished() {
+  const projectId = Number(route.params.id)
+  try {
+    await store.loadProject(projectId)
+  } catch {}
+  await Promise.all([
+    charactersStore.load(projectId).catch(() => {}),
+    worldStore.load(projectId).catch(() => {}),
+    itemsStore.load(projectId).catch(() => {}),
+  ])
 }
 
 async function onAIBeats() {
@@ -560,6 +599,7 @@ async function autoIndexAfterAI() {
           @index="onIndexChapter"
           @score="onAIScore"
           @assistant="onAIAssistant"
+          @auto-write="onAIAutoWrite"
         />
       </div>
       <el-input
@@ -649,6 +689,28 @@ async function autoIndexAfterAI() {
     @insert-to-cursor="onAssistantInsert"
     @replace-selection="onAssistantReplace"
     @append-to-end="onAssistantAppend"
+  />
+
+  <AutoWriteDialog
+    v-model="autoWriteDialogVisible"
+    :project-id="store.project?.id || null"
+    :chapters="store.chapters"
+    :default-chapter-id="selectedChapter?.id || null"
+    :characters="projectCharacters"
+    :world-entities="projectWorld"
+    :items="projectItems"
+    :default-target-word-count="store.project?.words_per_chapter || 4000"
+    @started="onAutoWriteStarted"
+  />
+
+  <AutoWriteProgressDrawer
+    v-model="autoWriteProgressVisible"
+    :task-id="autoWriteTaskId"
+    :initial-chapter-ids="autoWriteChapterIds"
+    :initial-mode="autoWriteMode"
+    :initial-threshold="autoWriteThreshold"
+    @finished="onAutoWriteFinished"
+    @cancelled="onAutoWriteFinished"
   />
 </template>
 

@@ -19,6 +19,7 @@ from app.schemas.chapter import (
 from app.schemas.project import ProjectCreate
 from app.services import (
     ai_task_manager,
+    auto_writer_service,
     chapter_ai_service,
     chapter_beats_alignment_service,
     chapter_beats_service,
@@ -340,3 +341,39 @@ async def ai_suggest_description(body: SuggestBody, db: Session = Depends(get_db
     except AIError as e:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e)) from e
     return {"description": description}
+
+
+class AutoWriteBody(BaseModel):
+    """连续自动生成的入参。"""
+
+    start_chapter_id: int
+    count: int = Field(default=1, ge=1, le=50)
+    target_word_count: int = Field(default=4000, ge=200, le=20000)
+    extra_instruction: str | None = Field(default=None, max_length=2000)
+    character_ids: list[int] = Field(default_factory=list)
+    world_entity_ids: list[int] = Field(default_factory=list)
+    item_ids: list[int] = Field(default_factory=list)
+    # strict 严格停 / auto_fix 自纠继续 / all_through 全推到底
+    mode: str = Field(default="auto_fix", pattern="^(strict|auto_fix|all_through)$")
+    score_threshold: int = Field(default=70, ge=0, le=100)
+
+
+@router.post("/projects/{project_id}/ai/auto-write")
+async def ai_auto_write(project_id: int, body: AutoWriteBody) -> dict:
+    """启动自动连写后台任务,立刻返回 task_id + 待处理章节 id 列表。"""
+    try:
+        task_id, chapter_ids = await auto_writer_service.start_background(
+            project_id=project_id,
+            start_chapter_id=body.start_chapter_id,
+            count=body.count,
+            target_word_count=body.target_word_count,
+            extra_instruction=body.extra_instruction,
+            character_ids=body.character_ids,
+            world_entity_ids=body.world_entity_ids,
+            item_ids=body.item_ids,
+            mode=body.mode,
+            score_threshold=body.score_threshold,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
+    return {"task_id": task_id, "chapter_ids": chapter_ids}
