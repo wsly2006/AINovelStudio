@@ -22,7 +22,7 @@ from functools import wraps
 
 from mcp.server.fastmcp import FastMCP
 
-from app.ai.tools import chapters, characters, projects  # noqa: F401  触发 @tool 注册
+from app.ai.tools import chapters, characters, projects, writing  # noqa: F401  触发 @tool 注册
 from app.ai.tools.hooks import install as install_hooks
 from app.ai.tools.hooks import writes_enabled
 from app.ai.tools.registry import REGISTRY, Tool
