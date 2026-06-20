@@ -37,8 +37,14 @@ def get_db() -> Generator[Session, None, None]:
         db.close()
 
 
-def init_db() -> None:
-    # 首版用 create_all 起表;Phase 2 加 Chapter 时再切到 Alembic
+def _import_all_models() -> None:
+    """把所有 ORM 模型 import 一遍,触发 SQLAlchemy 注册。
+
+    抽出来是因为:
+    - init_db() 主进程要它(create_all 之前必须把所有 Mapper 注册好)
+    - MCP server 进程也要它(共用同一份 SessionLocal,但不跑迁移)
+    单一来源避免两边漏改。
+    """
     from app.models import ai_call_log as _ai_call_log  # noqa: F401
     from app.models import ai_conversation as _ai_conversation  # noqa: F401
     from app.models import chapter as _chapter  # noqa: F401
@@ -58,6 +64,11 @@ def init_db() -> None:
     from app.models import state_event as _state_event  # noqa: F401
     from app.models import task as _task  # noqa: F401
     from app.models import world_entity as _world_entity  # noqa: F401
+
+
+def init_db() -> None:
+    # 首版用 create_all 起表;Phase 2 加 Chapter 时再切到 Alembic
+    _import_all_models()
 
     Base.metadata.create_all(bind=engine)
     _apply_lightweight_migrations()
