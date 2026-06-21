@@ -281,28 +281,32 @@ async function onBatchCreated() {
         <span>{{ t('outline.contentExistsBanner') }}</span>
       </div>
 
-      <div class="field">
-        <label class="field-label">{{ t('outline.fieldSummary') }}</label>
-        <el-input
-          v-model="summaryDraft"
-          type="textarea"
-          :autosize="{ minRows: 3, maxRows: 6 }"
-          :placeholder="t('outline.summaryPlaceholder')"
-          maxlength="4000"
-          @blur="flushMeta"
-        />
-        <div class="field-hint">{{ t('outline.summaryHint') }}</div>
-      </div>
+      <div class="split">
+        <div class="col col-left">
+          <label class="field-label">{{ t('outline.fieldSummary') }}</label>
+          <el-input
+            v-model="summaryDraft"
+            type="textarea"
+            resize="none"
+            :placeholder="t('outline.summaryPlaceholder')"
+            maxlength="4000"
+            show-word-limit
+            class="summary-input"
+            @blur="flushMeta"
+          />
+          <div class="field-hint">{{ t('outline.summaryHint') }}</div>
+        </div>
 
-      <div class="field">
-        <label class="field-label">{{ t('outline.fieldBeats') }}</label>
-        <ChapterBeatsEditor
-          :model-value="currentBeats"
-          @update:model-value="onBeatsChange"
-          :chapter-id="selectedChapter.id"
-          :threads="projectThreads"
-          :target-word-count="store.project?.words_per_chapter || 4000"
-        />
+        <div class="col col-right">
+          <label class="field-label">{{ t('outline.fieldBeats') }}</label>
+          <ChapterBeatsEditor
+            :model-value="currentBeats"
+            @update:model-value="onBeatsChange"
+            :chapter-id="selectedChapter.id"
+            :threads="projectThreads"
+            :target-word-count="store.project?.words_per_chapter || 4000"
+          />
+        </div>
       </div>
     </div>
   </main>
@@ -374,15 +378,17 @@ async function onBatchCreated() {
 }
 .editor-pane {
   flex: 1;
-  overflow-y: auto;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 14px;
+  min-height: 0;
 }
 .header-row {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-shrink: 0;
 }
 .chap-prefix {
   margin: 0;
@@ -408,19 +414,51 @@ async function onBatchCreated() {
   border-radius: 6px;
   font-size: 12px;
   color: #d46b08;
+  flex-shrink: 0;
 }
-.field {
+.split {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  gap: 16px;
+  min-height: 0;
+  overflow: hidden;
+}
+.col {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  min-height: 0;
+  overflow: hidden;
+}
+.col-right {
+  overflow-y: auto;
+  padding-right: 4px;
 }
 .field-label {
   font-size: 13px;
   font-weight: 600;
   color: #1f2329;
+  flex-shrink: 0;
 }
 .field-hint {
   font-size: 12px;
   color: #86909c;
+  flex-shrink: 0;
+}
+.summary-input {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+.summary-input :deep(.el-textarea) {
+  flex: 1;
+  display: flex;
+}
+.summary-input :deep(.el-textarea__inner) {
+  flex: 1;
+  height: 100%;
+  font-size: 14px;
+  line-height: 1.7;
 }
 </style>

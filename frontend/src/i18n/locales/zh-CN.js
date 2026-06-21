@@ -307,10 +307,10 @@ export default {
     placeholder: '从左侧选择章节,或一次性让 AI 草拟连续 N 章大纲',
     batchSuggestButton: 'AI 批量草拟大纲',
     contentExistsBanner: '本章正文已写过。修改大纲不会动正文,但可能与已写内容产生差距,建议同步去「正文」页对账。',
-    fieldSummary: '本章梗概',
+    fieldSummary: '本章大纲',
     fieldBeats: '本章节拍',
-    summaryPlaceholder: '60-150 字讲清:本章会发生什么、人物动机、推进的冲突或伏笔',
-    summaryHint: 'AI 写正文 / 草拟节拍 / 一致性对账都会读这段',
+    summaryPlaceholder: '60-300 字讲清:本章会发生什么、人物动机、推进的冲突或伏笔。可以分点写,也可以一段成文。',
+    summaryHint: '这就是本章的「大纲文本」。AI 写正文 / 草拟节拍 / 一致性对账都会读它',
     beatsCountTitle: '本章节拍数',
     beatsCountTag: '{n} 拍',
 
