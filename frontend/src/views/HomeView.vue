@@ -3,11 +3,13 @@ import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Upload, EditPen, DataLine } from '@element-plus/icons-vue'
+import { Plus, Upload, EditPen, DataLine, MagicStick } from '@element-plus/icons-vue'
 import { useProjectsStore } from '../stores/projects'
 import ProjectCard from '../components/ProjectCard.vue'
 import ProjectCreateDialog from '../components/ProjectCreateDialog.vue'
 import { streamProgressSSE } from '../api/sse'
+import { projectsApi } from '../api/projects'
+import { outlineApi } from '../api/outline'
 
 const router = useRouter()
 const store = useProjectsStore()
@@ -15,6 +17,11 @@ const { t } = useI18n()
 const dialogVisible = ref(false)
 const fileInput = ref(null)
 const importing = ref(false)
+
+// 快速开始:只填名字 → 建工程 + 10 章空大纲 → 直接进大纲页
+const quickName = ref('')
+const quickCreating = ref(false)
+const QUICK_INITIAL_CHAPTERS = 10
 
 // AI 生成进度面板状态。任务跑在服务器后台,这里只订阅事件流。
 const aiGenerating = ref(false)
@@ -226,6 +233,39 @@ function triggerImport() {
   fileInput.value?.click()
 }
 
+// 快速开始:只填名字,后台建工程 + 10 章空大纲,直接跳大纲页
+async function onQuickStart() {
+  const name = (quickName.value || '').trim()
+  if (!name) {
+    ElMessage.warning(t('home.quickStartNameRequired'))
+    return
+  }
+  if (quickCreating.value) return
+  quickCreating.value = true
+  try {
+    const project = await projectsApi.create({ name })
+    const drafts = Array.from({ length: QUICK_INITIAL_CHAPTERS }, () => ({
+      title: '',
+      summary: null,
+      beats: [],
+    }))
+    try {
+      await outlineApi.batchCreate(project.id, drafts)
+    } catch (e) {
+      // 章节落库失败不阻塞跳转 —— 用户进大纲页后还能手动加章
+      console.warn('quick-start: batch-create chapters failed', e)
+    }
+    quickName.value = ''
+    await store.refresh()
+    router.push({ name: 'workspace-outline', params: { id: String(project.id) } })
+  } catch (e) {
+    const detail = e?.response?.data?.detail
+    ElMessage.error(detail || e.message || t('home.quickStartFailed'))
+  } finally {
+    quickCreating.value = false
+  }
+}
+
 async function onFilePicked(e) {
   const file = e.target.files?.[0]
   e.target.value = ''
@@ -278,6 +318,28 @@ async function onFilePicked(e) {
           <span class="cta-main">{{ t('home.heroImport') }}</span>
           <span class="cta-sub">{{ t('home.importHint') }}</span>
         </button>
+      </div>
+
+      <div class="quick-start">
+        <div class="quick-start-row">
+          <el-icon class="quick-icon"><MagicStick /></el-icon>
+          <el-input
+            v-model="quickName"
+            :placeholder="t('home.quickStartPlaceholder')"
+            maxlength="120"
+            class="quick-input"
+            :disabled="quickCreating"
+            @keyup.enter="onQuickStart"
+          />
+          <el-button
+            type="primary"
+            :loading="quickCreating"
+            @click="onQuickStart"
+          >
+            {{ t('home.quickStartAction') }}
+          </el-button>
+        </div>
+        <div class="quick-start-hint">{{ t('home.quickStartHint') }}</div>
       </div>
 
       <!-- AI 生成进度,只在生成期间出现 -->
@@ -386,6 +448,47 @@ async function onFilePicked(e) {
   gap: 16px;
   max-width: 720px;
   margin: 0 auto;
+}
+.quick-start {
+  max-width: 720px;
+  margin: 16px auto 0;
+}
+.quick-start-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px 6px 14px;
+  background: #fff;
+  border: 1px solid #e5e6eb;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
+}
+.quick-start-row:focus-within {
+  border-color: #5b8def;
+  box-shadow: 0 0 0 3px rgba(91, 141, 239, 0.12);
+}
+.quick-icon {
+  color: #7c3aed;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.quick-input {
+  flex: 1;
+}
+.quick-input :deep(.el-input__wrapper) {
+  box-shadow: none;
+  background: transparent;
+  padding: 0;
+}
+.quick-input :deep(.el-input__inner) {
+  font-size: 15px;
+  height: 40px;
+}
+.quick-start-hint {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #86909c;
+  text-align: center;
 }
 .cta-primary,
 .cta-secondary {
