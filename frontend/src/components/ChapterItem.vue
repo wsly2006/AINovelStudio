@@ -30,7 +30,7 @@ const statusText = computed(() => {
     writing: t('workspace.statusWriting'),
     done: t('workspace.statusDone'),
   }
-  return map[props.chapter.status] || ''
+  return map[displayStatus.value] || ''
 })
 
 const statusType = computed(() => {
@@ -39,7 +39,15 @@ const statusType = computed(() => {
     outlined: 'primary',
     writing: 'warning',
     done: 'success',
-  }[props.chapter.status] || 'info'
+  }[displayStatus.value] || 'info'
+})
+
+// 后端 status='outlined' 是 batch_create 的兜底,空章节也是这个值
+// 显示时回退:有真大纲才叫 outlined,否则按 draft 显示,免得列表全是「已大纲」
+const displayStatus = computed(() => {
+  const raw = props.chapter.status
+  if (raw === 'outlined' && !hasOutline.value) return 'draft'
+  return raw
 })
 
 // 评分徽章:有分才显示,颜色按分段
@@ -67,6 +75,14 @@ const beatsCount = computed(() => props.chapter.beats_count ?? null)
 const summaryPreview = computed(() => {
   const s = (props.chapter.summary || '').trim()
   return s ? s.replace(/\s+/g, ' ').slice(0, 60) : ''
+})
+
+// 是否真有大纲内容 —— 不看 status,看 summary/beats 实际是否填了
+// (status='outlined' 是后端兜底状态,快速开书的空章节也是 outlined)
+const hasOutline = computed(() => {
+  const hasSummary = (props.chapter.summary || '').trim().length > 0
+  const hasBeats = (props.chapter.beats_count ?? 0) > 0
+  return hasSummary || hasBeats
 })
 
 function onCommand(cmd) {
@@ -98,14 +114,18 @@ function onCommand(cmd) {
       </el-dropdown>
     </div>
     <div class="row2">
-      <el-tag :type="statusType" size="small" effect="plain">{{ statusText }}</el-tag>
-
       <template v-if="mode === 'outline'">
-        <span v-if="beatsCount != null" class="beats-tag" :title="t('outline.beatsCountTitle')">
+        <span class="outline-flag" :class="{ done: hasOutline }">
+          <span v-if="hasOutline">✓</span>
+          <span v-else>✗</span>
+          {{ t('workspaceTab.outline') }}
+        </span>
+        <span v-if="beatsCount != null && beatsCount > 0" class="beats-tag" :title="t('outline.beatsCountTitle')">
           {{ t('outline.beatsCountTag', { n: beatsCount }) }}
         </span>
       </template>
       <template v-else>
+        <el-tag :type="statusType" size="small" effect="plain">{{ statusText }}</el-tag>
         <span class="words">{{ wordCountText }}</span>
         <span
           v-if="styleCount != null"
@@ -237,6 +257,21 @@ function onCommand(cmd) {
   padding: 2px 8px;
   border-radius: 9px;
   font-variant-numeric: tabular-nums;
+}
+.outline-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 9px;
+  background: #fef0f0;
+  color: #f56c6c;
+  font-weight: 500;
+}
+.outline-flag.done {
+  background: #e7f6ec;
+  color: #00b42a;
 }
 .summary-preview {
   margin-top: 6px;

@@ -13,7 +13,7 @@ const emit = defineEmits(['update:modelValue', 'submit'])
 
 const { t } = useI18n()
 
-const form = ref({ title: '', summary: '' })
+const form = ref({ title: '', summary: '', count: 1 })
 const formRef = ref(null)
 const submitting = ref(false)
 
@@ -26,6 +26,7 @@ watch(
       form.value = {
         title: props.title || '',
         summary: props.summary || '',
+        count: 1,
       }
     }
   }
@@ -42,15 +43,29 @@ const submitText = computed(() =>
 )
 
 const showSummary = computed(() => props.mode !== 'rename')
+// 仅在新建时显示数量字段;批量创建只追加空白章节,跳过副标题/大纲输入
+const showCount = computed(() => props.mode === 'create')
+const isBatch = computed(() => showCount.value && form.value.count > 1)
+
+const batchRangeText = computed(() => {
+  const n = form.value.count
+  if (n <= 1) return ''
+  return t('chapterDialog.batchRangePreview', {
+    from: props.orderIndex,
+    to: props.orderIndex + n - 1,
+    count: n,
+  })
+})
 
 async function onSubmit() {
   if (!formRef.value) return
-  // 副标题与概述都允许为空,无需校验
   submitting.value = true
   try {
+    const count = isBatch.value ? Math.max(1, Math.min(50, form.value.count)) : 1
     const payload = {
-      title: form.value.title.trim(),
-      summary: form.value.summary.trim() || null,
+      title: count > 1 ? '' : form.value.title.trim(),
+      summary: count > 1 ? null : form.value.summary.trim() || null,
+      count,
     }
     await emit('submit', payload)
     emit('update:modelValue', false)
@@ -68,7 +83,20 @@ async function onSubmit() {
     width="480px"
   >
     <el-form ref="formRef" :model="form" label-width="72px">
-      <el-form-item :label="t('chapterDialog.titleLabel')">
+      <el-form-item v-if="showCount" :label="t('chapterDialog.countLabel')">
+        <el-input-number
+          v-model="form.count"
+          :min="1"
+          :max="50"
+          :step="1"
+          controls-position="right"
+        />
+        <div class="hint">{{ t('chapterDialog.countHint') }}</div>
+        <div v-if="isBatch" class="batch-preview">
+          {{ batchRangeText }}
+        </div>
+      </el-form-item>
+      <el-form-item v-if="!isBatch" :label="t('chapterDialog.titleLabel')">
         <el-input
           v-model="form.title"
           :placeholder="t('chapterDialog.titlePlaceholder')"
@@ -81,7 +109,7 @@ async function onSubmit() {
         </el-input>
         <div class="hint">{{ t('chapterDialog.titleHint') }}</div>
       </el-form-item>
-      <el-form-item v-if="showSummary" :label="t('chapterDialog.summaryLabel')">
+      <el-form-item v-if="showSummary && !isBatch" :label="t('chapterDialog.summaryLabel')">
         <el-input
           v-model="form.summary"
           type="textarea"
@@ -91,6 +119,9 @@ async function onSubmit() {
           show-word-limit
         />
       </el-form-item>
+      <div v-if="isBatch" class="batch-skip">
+        {{ t('chapterDialog.batchSkipFields') }}
+      </div>
     </el-form>
     <template #footer>
       <el-button @click="emit('update:modelValue', false)">{{ t('common.cancel') }}</el-button>
@@ -111,5 +142,20 @@ async function onSubmit() {
   color: #86909c;
   margin-top: 4px;
   line-height: 1.5;
+}
+.batch-preview {
+  margin-top: 6px;
+  font-size: 13px;
+  color: #4080ff;
+  font-weight: 500;
+}
+.batch-skip {
+  padding: 8px 12px;
+  margin: 0 0 0 72px;
+  font-size: 12px;
+  color: #86909c;
+  background: #f5f7fa;
+  border-radius: 6px;
+  line-height: 1.6;
 }
 </style>

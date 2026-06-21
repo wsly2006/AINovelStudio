@@ -25,6 +25,7 @@ import { locateQuote } from '../composables/locateQuote'
 import { chapterVersionsApi } from '../api/chapterVersions'
 import { chaptersApi } from '../api/chapters'
 import { plotThreadsApi } from '../api/plotThreads'
+import { outlineApi } from '../api/outline'
 
 const route = useRoute()
 const store = useWorkspaceStore()
@@ -212,9 +213,25 @@ async function onEdit(chapter) {
 
 async function onDialogSubmit(payload) {
   if (dialogMode.value === 'create') {
+    const count = payload.count || 1
     try {
-      await store.createChapter(payload)
-      ElMessage.success(t('workspace.chapterCreated'))
+      if (count > 1) {
+        // 批量追加空白章节走 outlineApi,落库后刷一遍 store
+        const drafts = Array.from({ length: count }, () => ({
+          title: '',
+          summary: null,
+          beats: [],
+        }))
+        await outlineApi.batchCreate(store.project.id, drafts)
+        await store.loadProject(store.project.id)
+        ElMessage.success(t('workspace.chapterBatchCreated', { n: count }))
+      } else {
+        await store.createChapter({
+          title: payload.title,
+          summary: payload.summary,
+        })
+        ElMessage.success(t('workspace.chapterCreated'))
+      }
     } catch (e) {
       ElMessage.error(e.message || t('workspace.createFailed'))
       throw e
