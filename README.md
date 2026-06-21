@@ -5,6 +5,9 @@
 ## 特性
 
 - **写作主线**:工程列表 / 章节管理 / Markdown 编辑器(CodeMirror 6)/ 1.5s 防抖自动保存
+- **大纲模式**:在「大纲」tab 一次性 AI 批量草拟连续 N 章的标题 / 梗概 / 节拍,
+  落库为占位章节;再回「正文」tab 写。每章可单独编辑大纲,正文写完后可一键
+  把正文与大纲对账,逐项给 covered / partial / missing
 - **AI 生成**:整章生成 / 续写 / 改写选区 / 章节摘要,流式输出可预览可中断;
   编辑器内选中文字右键即可一键改写,工具栏按钮悬停有功能说明
 - **章节评分**:AI 按文笔 / 情节 / 人物 / 综合 4 维打分,留历史曲线,列表显示最新分徽章
@@ -47,9 +50,10 @@
 
 ```
 AINovelWritor/
-├── backend/      # FastAPI,217 个 pytest
+├── backend/      # FastAPI,246 个 pytest
 ├── frontend/     # Vue 3
 ├── data/         # 运行时数据(SQLite,不入 git)
+├── docs/         # 本地设计文档(不入 git)
 ├── scripts/      # 一键启动脚本
 └── README.md
 ```
@@ -278,6 +282,8 @@ npm run build    # 生产构建
 - Phase 10:MCP 集成(把全部领域数据 + 写章节工具通过 Model Context Protocol
   暴露给 Claude Code / Claude Desktop / Cursor;读默认开,写需 env 开关 +
   自动版本快照兜底)
+- Phase 11:大纲模式(批量 AI 草拟连续 N 章的 title / summary / beats,
+  落库为 outlined 占位章节;正文 tab 加章节-大纲对账,逐项 covered / partial / missing)
 
 候选:章节分卷、时间线人物泳道可视化、生成结果对比 / 重生成、评分跨模型对比视图、
 MCP 工具的章节全文搜索。
