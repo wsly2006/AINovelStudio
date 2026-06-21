@@ -39,6 +39,22 @@ class Project(Base):
     # 每章目标字数:新建工程时填,「生成本章」抽屉默认值用它,缺省按 4000 字。
     words_per_chapter: Mapped[int] = mapped_column(Integer, nullable=False, default=4000)
 
+    # ── 发布元数据(P1) ─────────────────────────────────────
+    # 这本书使用的笔名;本期不建全局 PenName 表,直接存字符串够用,
+    # 等出现「按笔名筛选项目列表」需求时再升级到外键。
+    pen_name: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    # 系列名 + 第几本:KDP series / Webnovel volume 都用得上
+    series_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    series_index: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # 长简介:Amazon A+ description / Webnovel synopsis;与 description(短)不同
+    blurb: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # 关键词:KDP 上限 7 个,UI 端按所选平台 schema 提示;空数组兜底
+    keywords: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    # 平台分类:KDP 两层 BISAC、起点频道+分类等,平铺 string 数组
+    categories: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    # 计划上的平台 code 列表,导出弹窗按此默认勾选
+    target_platform_codes: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), nullable=False
     )

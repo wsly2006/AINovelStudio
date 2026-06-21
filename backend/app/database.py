@@ -55,6 +55,7 @@ def _import_all_models() -> None:
     from app.models import consistency_issue as _consistency_issue  # noqa: F401
     from app.models import item as _item  # noqa: F401
     from app.models import ladder as _ladder  # noqa: F401
+    from app.models import platform_profile as _platform_profile  # noqa: F401
     from app.models import plot_event as _plot_event  # noqa: F401
     from app.models import plot_thread as _plot_thread  # noqa: F401
     from app.models import project as _project  # noqa: F401
@@ -73,6 +74,7 @@ def init_db() -> None:
     Base.metadata.create_all(bind=engine)
     _apply_lightweight_migrations()
     _migrate_world_items_to_items_table()
+    _seed_platform_profiles()
 
 
 # create_all() 不会改老表的结构,这里手动补几个新列。
@@ -83,6 +85,14 @@ _NEW_COLUMNS: list[tuple[str, str, str]] = [
     ("projects", "tags", "JSON NOT NULL DEFAULT '[]'"),
     ("projects", "words_per_chapter", "INTEGER NOT NULL DEFAULT 4000"),
     ("projects", "synopsis", "TEXT"),
+    # P1 发布元数据
+    ("projects", "pen_name", "VARCHAR(80)"),
+    ("projects", "series_name", "VARCHAR(120)"),
+    ("projects", "series_index", "INTEGER"),
+    ("projects", "blurb", "TEXT"),
+    ("projects", "keywords", "JSON NOT NULL DEFAULT '[]'"),
+    ("projects", "categories", "JSON NOT NULL DEFAULT '[]'"),
+    ("projects", "target_platform_codes", "JSON NOT NULL DEFAULT '[]'"),
     ("chapters", "beats", "JSON"),
     ("chapters", "beats_alignment", "JSON"),
     ("plot_events", "thread_id", "INTEGER REFERENCES plot_threads(id) ON DELETE SET NULL"),
@@ -111,6 +121,17 @@ def _apply_lightweight_migrations() -> None:
             if column in existing:
                 continue
             conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {ddl}"))
+
+
+def _seed_platform_profiles() -> None:
+    """启动时塞入预制平台 profile,已存在的同步结构字段。"""
+    from app.services.platform_profile_service import seed_presets
+
+    db = SessionLocal()
+    try:
+        seed_presets(db)
+    finally:
+        db.close()
 
 
 def _migrate_world_items_to_items_table() -> None:

@@ -42,12 +42,20 @@ def export_to_dict(db: Session, project_id: int) -> dict:
         "project": {
             "name": p.name,
             "description": p.description,
+            "synopsis": p.synopsis,
             "channel": p.channel,
             "genre": p.genre,
             "tags": list(p.tags or []),
             "cover_color": p.cover_color,
             "progression_enabled": p.progression_enabled,
             "words_per_chapter": p.words_per_chapter,
+            "pen_name": p.pen_name,
+            "series_name": p.series_name,
+            "series_index": p.series_index,
+            "blurb": p.blurb,
+            "keywords": list(p.keywords or []),
+            "categories": list(p.categories or []),
+            "target_platform_codes": list(p.target_platform_codes or []),
         },
         "ladders": [
             {
@@ -213,12 +221,20 @@ def import_from_dict(db: Session, data: dict, *, name_override: str | None = Non
     project = Project(
         name=name,
         description=proj_data.get("description"),
+        synopsis=proj_data.get("synopsis"),
         channel=proj_data.get("channel"),
         genre=proj_data.get("genre"),
         tags=list(proj_data.get("tags") or []),
         cover_color=proj_data.get("cover_color"),
         progression_enabled=bool(proj_data.get("progression_enabled", False)),
         words_per_chapter=int(proj_data.get("words_per_chapter") or 4000),
+        pen_name=proj_data.get("pen_name"),
+        series_name=proj_data.get("series_name"),
+        series_index=proj_data.get("series_index"),
+        blurb=proj_data.get("blurb"),
+        keywords=list(proj_data.get("keywords") or []),
+        categories=list(proj_data.get("categories") or []),
+        target_platform_codes=list(proj_data.get("target_platform_codes") or []),
     )
     db.add(project)
     db.flush()  # 拿到 project.id

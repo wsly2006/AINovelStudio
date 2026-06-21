@@ -13,6 +13,7 @@ from app.services.export_service import (
     InvalidImportError,
     ProjectNotFoundForExportError,
 )
+from app.services.exporters import docx_exporter, epub_exporter, metadata_exporter, txt_exporter
 from app.services.project_service import ProjectNameConflictError
 
 router = APIRouter(prefix="/api", tags=["export"])
@@ -68,6 +69,109 @@ def export_project_markdown(project_id: int, db: Session = Depends(get_db)) -> R
         content=text,
         media_type="text/markdown; charset=utf-8",
         headers={"Content-Disposition": _content_disposition(first_line, "md")},
+    )
+
+
+@router.get("/projects/{project_id}/export.epub")
+def export_project_epub(project_id: int, db: Session = Depends(get_db)) -> Response:
+    from app.models.project import Project
+
+    proj = db.get(Project, project_id)
+    if proj is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="工程不存在")
+    try:
+        body = epub_exporter.export_to_epub(db, project_id)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+    return Response(
+        content=body,
+        media_type="application/epub+zip",
+        headers={"Content-Disposition": _content_disposition(proj.name, "epub")},
+    )
+
+
+@router.get("/projects/{project_id}/export.metadata.json")
+def export_project_metadata(project_id: int, db: Session = Depends(get_db)) -> Response:
+    from app.models.project import Project
+
+    proj = db.get(Project, project_id)
+    if proj is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="工程不存在")
+    body = metadata_exporter.export_metadata_json(db, project_id)
+    return Response(
+        content=body,
+        media_type="application/json",
+        headers={"Content-Disposition": _content_disposition(f"{proj.name}-metadata", "json")},
+    )
+
+
+@router.get("/projects/{project_id}/export.kdp-listing.txt")
+def export_project_kdp_listing(project_id: int, db: Session = Depends(get_db)) -> Response:
+    from app.models.project import Project
+
+    proj = db.get(Project, project_id)
+    if proj is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="工程不存在")
+    body = metadata_exporter.export_kdp_listing(db, project_id)
+    return Response(
+        content=body,
+        media_type="text/plain; charset=utf-8",
+        headers={"Content-Disposition": _content_disposition(f"{proj.name}-kdp-listing", "txt")},
+    )
+
+
+@router.get("/projects/{project_id}/export.docx")
+def export_project_docx(project_id: int, db: Session = Depends(get_db)) -> Response:
+    from app.models.project import Project
+
+    proj = db.get(Project, project_id)
+    if proj is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="工程不存在")
+    body = docx_exporter.export_to_docx(db, project_id)
+    return Response(
+        content=body,
+        media_type=(
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        ),
+        headers={"Content-Disposition": _content_disposition(proj.name, "docx")},
+    )
+
+
+@router.get("/projects/{project_id}/export.txt")
+def export_project_txt(
+    project_id: int,
+    encoding: str = "utf-8",
+    mode: str = "whole",
+    db: Session = Depends(get_db),
+) -> Response:
+    """txt 导出。
+
+    - mode=whole:整本 txt(默认)
+    - mode=chapters:每章一个 txt 打 zip,扩展名变成 .zip
+    - encoding:utf-8 / gb18030
+    """
+    from app.models.project import Project
+
+    proj = db.get(Project, project_id)
+    if proj is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="工程不存在")
+    if encoding.lower() not in {"utf-8", "gb18030"}:
+        raise HTTPException(status_code=400, detail="encoding 仅支持 utf-8 / gb18030")
+    if mode not in {"whole", "chapters"}:
+        raise HTTPException(status_code=400, detail="mode 必须是 whole 或 chapters")
+
+    if mode == "whole":
+        body = txt_exporter.export_to_txt_whole(db, project_id, encoding=encoding)
+        ext = "txt"
+        media = f"text/plain; charset={encoding}"
+    else:
+        body = txt_exporter.export_to_txt_chapters_zip(db, project_id, encoding=encoding)
+        ext = "zip"
+        media = "application/zip"
+    return Response(
+        content=body,
+        media_type=media,
+        headers={"Content-Disposition": _content_disposition(proj.name, ext)},
     )
 
 

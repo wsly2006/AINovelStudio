@@ -19,6 +19,15 @@ class ProjectBase(BaseModel):
     # 也作为「生成本章」抽屉的默认目标字数
     words_per_chapter: int = Field(default=4000, ge=500, le=20000)
 
+    # ── 发布元数据(P1) ─────────────────────────────────────
+    pen_name: str | None = Field(default=None, max_length=80)
+    series_name: str | None = Field(default=None, max_length=120)
+    series_index: int | None = Field(default=None, ge=1, le=999)
+    blurb: str | None = Field(default=None, max_length=8000)
+    keywords: list[str] = Field(default_factory=list)
+    categories: list[str] = Field(default_factory=list)
+    target_platform_codes: list[str] = Field(default_factory=list)
+
     @field_validator("name")
     @classmethod
     def _strip_name(cls, v: str) -> str:
@@ -60,6 +69,15 @@ class ProjectUpdate(BaseModel):
     cover_color: str | None = Field(default=None, max_length=16)
     progression_enabled: bool | None = None
     words_per_chapter: int | None = Field(default=None, ge=500, le=20000)
+
+    # ── 发布元数据(P1) ─────────────────────────────────────
+    pen_name: str | None = Field(default=None, max_length=80)
+    series_name: str | None = Field(default=None, max_length=120)
+    series_index: int | None = Field(default=None, ge=1, le=999)
+    blurb: str | None = Field(default=None, max_length=8000)
+    keywords: list[str] | None = None
+    categories: list[str] | None = None
+    target_platform_codes: list[str] | None = None
 
     @field_validator("name")
     @classmethod

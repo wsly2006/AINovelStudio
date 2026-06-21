@@ -16,6 +16,7 @@ from app.api import (
     health,
     items,
     ladders,
+    platforms,
     plot_threads,
     projects,
     prompts,
@@ -102,3 +103,4 @@ app.include_router(settings_api.router)
 app.include_router(prompts.router)
 app.include_router(export.router)
 app.include_router(stats.router)
+app.include_router(platforms.router)

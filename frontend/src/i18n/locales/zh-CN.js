@@ -412,6 +412,7 @@ export default {
     world: '世界观',
     progression: '进阶',
     tasks: '任务',
+    publish: '发布',
   },
 
   synopsisBanner: {

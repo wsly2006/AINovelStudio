@@ -35,6 +35,13 @@ def _build_read(
             "cover_color": p.cover_color,
             "progression_enabled": p.progression_enabled,
             "words_per_chapter": p.words_per_chapter,
+            "pen_name": p.pen_name,
+            "series_name": p.series_name,
+            "series_index": p.series_index,
+            "blurb": p.blurb,
+            "keywords": list(p.keywords or []),
+            "categories": list(p.categories or []),
+            "target_platform_codes": list(p.target_platform_codes or []),
             "created_at": p.created_at,
             "updated_at": p.updated_at,
             "chapter_count": chapter_count,
@@ -121,6 +128,13 @@ def create_project(db: Session, payload: ProjectCreate) -> ProjectRead:
         cover_color=payload.cover_color,
         progression_enabled=progression,
         words_per_chapter=payload.words_per_chapter,
+        pen_name=payload.pen_name,
+        series_name=payload.series_name,
+        series_index=payload.series_index,
+        blurb=payload.blurb,
+        keywords=list(payload.keywords or []),
+        categories=list(payload.categories or []),
+        target_platform_codes=list(payload.target_platform_codes or []),
     )
     db.add(p)
     try:

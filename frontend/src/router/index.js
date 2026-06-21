@@ -62,6 +62,11 @@ const routes = [
         name: 'workspace-tasks',
         component: () => import('../views/WorkspaceTasks.vue'),
       },
+      {
+        path: 'publish',
+        name: 'workspace-publish',
+        component: () => import('../views/WorkspacePublish.vue'),
+      },
     ],
   },
 ]

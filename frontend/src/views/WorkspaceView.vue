@@ -15,6 +15,7 @@ import { useAssistantStore } from '../stores/assistant'
 import AIConfigDialog from '../components/AIConfigDialog.vue'
 import PromptManagerDialog from '../components/PromptManagerDialog.vue'
 import ProjectEditDialog from '../components/ProjectEditDialog.vue'
+import ExportDialog from '../components/ExportDialog.vue'
 import WorkspaceLeftNav from '../components/WorkspaceLeftNav.vue'
 
 const props = defineProps({ id: { type: String, required: true } })
@@ -33,6 +34,7 @@ const projectId = computed(() => Number(props.id))
 const aiConfigVisible = ref(false)
 const promptManagerVisible = ref(false)
 const projectEditVisible = ref(false)
+const exportDialogVisible = ref(false)
 
 // 总纲提醒小横幅:工程没填 synopsis 时露一次,用户点过「不再提示」就 localStorage 标记
 const synopsisDismissed = ref(false)
@@ -123,6 +125,10 @@ function onExport(kind) {
   window.open(url, '_blank')
 }
 
+function onGoPublish() {
+  router.push({ name: 'workspace-publish', params: { id: String(projectId.value) } })
+}
+
 // 系统设置下拉菜单:把模型/提示词/用量统计三个入口聚合,顶栏更干净
 function onSettings(cmd) {
   if (cmd === 'ai') aiConfigVisible.value = true
@@ -149,27 +155,9 @@ function onSettings(cmd) {
       </button>
       <span class="spacer" />
 
-      <el-dropdown trigger="click" @command="onExport">
-        <el-button :icon="Download">
-          {{ t('workspace.exportMenu') }}<el-icon class="el-icon--right"><ArrowDown /></el-icon>
-        </el-button>
-        <template #dropdown>
-          <el-dropdown-menu>
-            <el-dropdown-item command="json">
-              <div>
-                <div>{{ t('workspace.exportJson') }}</div>
-                <div class="dropdown-hint">{{ t('workspace.exportJsonHint') }}</div>
-              </div>
-            </el-dropdown-item>
-            <el-dropdown-item command="md" divided>
-              <div>
-                <div>{{ t('workspace.exportMd') }}</div>
-                <div class="dropdown-hint">{{ t('workspace.exportMdHint') }}</div>
-              </div>
-            </el-dropdown-item>
-          </el-dropdown-menu>
-        </template>
-      </el-dropdown>
+      <el-button :icon="Download" @click="exportDialogVisible = true">
+        {{ t('workspace.exportMenu') }}
+      </el-button>
 
       <el-dropdown trigger="click" @command="onSettings">
         <el-button :icon="Tools">
@@ -231,6 +219,11 @@ function onSettings(cmd) {
       v-model="projectEditVisible"
       :project="store.project"
       @saved="onProjectSaved"
+    />
+    <ExportDialog
+      v-model="exportDialogVisible"
+      :project="store.project"
+      @go-publish="onGoPublish"
     />
   </div>
 </template>

@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { Document, User, Share, Reading, Compass, TrendCharts, Flag, Box, Connection } from '@element-plus/icons-vue'
+import { Document, User, Share, Reading, Compass, TrendCharts, Flag, Box, Connection, Promotion } from '@element-plus/icons-vue'
 import { useWorkspaceStore } from '../stores/workspace'
 
 const props = defineProps({
@@ -32,6 +32,11 @@ const NAV_ITEMS = computed(() => {
       icon: TrendCharts,
     })
   }
+  base.push({
+    name: 'workspace-publish',
+    labelKey: 'workspaceTab.publish',
+    icon: Promotion,
+  })
   return base
 })
 
