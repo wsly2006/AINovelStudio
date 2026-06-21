@@ -79,7 +79,8 @@ async function onImported(result) {
     t('home.importSuccess', { name: result.name, chapters: result.chapter_count, characters: 0 })
   )
   await store.refresh()
-  router.push(`/projects/${result.id}/workspace`)
+  // 新建后默认进大纲页:导入的小说也常常需要补 summary / beats 才能用 AI
+  router.push({ name: 'workspace-outline', params: { id: String(result.id) } })
 }
 
 function openCreateDialog() {
@@ -157,7 +158,11 @@ function subscribe(taskId) {
         await store.refresh()
         ElMessage.success(t('home.aiCreateDone', { n: aiProgress.value.index || 0 }))
         if (aiAutoNavigate.value && aiCreatedProjectId.value) {
-          router.push(`/projects/${aiCreatedProjectId.value}/workspace`)
+          // 新建后默认进大纲页:AI 已经生成了每章的 summary,正好在大纲里通览 + 补节拍
+          router.push({
+            name: 'workspace-outline',
+            params: { id: String(aiCreatedProjectId.value) },
+          })
         }
       },
       onCancelled: async () => {
