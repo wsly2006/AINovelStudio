@@ -286,6 +286,104 @@ _CHECK_BEATS_USER = """请对账下面这一章的节拍与实际抽出的情节
   ]
 }"""
 
+# ============ 4f. 批量草拟连续章节大纲 ============
+
+_SUGGEST_OUTLINES_BATCH_SYSTEM = (
+    "你是网络小说的资深大纲编辑,擅长把整本书的章节大纲拆解成一段段连贯可写的章节。"
+    "给定连续章节的位置与上下文,请一次性产出 N 个章节的大纲,确保章节之间承接顺畅、"
+    "推进主线、节奏有起伏。"
+    "严格输出 JSON,禁止额外解释或 Markdown 代码块。"
+)
+
+_SUGGEST_OUTLINES_BATCH_USER = """请为下面这本书连续草拟 {{count}} 个章节的大纲(从第 {{start_order_index}} 章开始,顺序排列)。
+
+工程信息:{{project_info}}
+
+{{synopsis_block}}
+
+{{threads_block}}
+
+前序章节梗概(供承接,不要重复其情节):
+{{previous_summary}}
+
+要求:
+- 必须恰好输出 {{count}} 个章节,顺序即写作顺序
+- 每章 title:8 字以内的副标题(可空字符串),不要带「第 N 章」前缀
+- 每章 summary:60-150 字,讲清本章关键事件、人物动机、推进的冲突或伏笔
+- 每章 beats:3-5 个节拍,顺序排列,逐拍推进本章
+  - 每拍 title 8-20 字,detail 40-150 字
+  - 至少有一拍推动主线,thread_titles 必须从「主线状态」里抄,不要造
+- 章节之间要有起承转合,本批最后一章留个钩子衔接下一批
+- 不要写正文,不要写比喻,只写「会发生什么」
+
+{{extra_instruction_block}}
+
+输出 JSON,严格遵循:
+{
+  "chapters": [
+    {
+      "title": "副标题(可空)",
+      "summary": "本章 60-150 字概要",
+      "beats": [
+        {
+          "title": "节拍标题(8-20 字)",
+          "detail": "节拍说明(40-150 字)",
+          "thread_titles": ["主线名"]
+        }
+      ]
+    }
+  ]
+}"""
+
+# ============ 4g. 章节内容 vs 大纲一致性检查 ============
+
+_OUTLINE_ALIGNMENT_SYSTEM = (
+    "你是冷静的中文小说编辑。给定本章的「计划大纲」(梗概 + 节拍)与「实际正文」,"
+    "判断正文是否兑现了大纲的承诺,逐项给出 covered / partial / missing。"
+    "covered=完全兑现,partial=有提到但弱化或走味,missing=完全没写到。"
+    "只看正文里实际写出的内容,不要脑补。"
+    "严格输出 JSON,禁止额外解释或 Markdown 代码块。"
+)
+
+_OUTLINE_ALIGNMENT_USER = """请对账本章的「计划大纲」与「实际正文」。
+
+章节:{{chapter_label}}
+
+【计划梗概】
+{{summary_block}}
+
+【计划节拍】(按顺序排列,beat_index 从 0 起算)
+{{beats_block}}
+
+【实际正文】
+---
+{{chapter_content}}
+---
+
+请逐项判断:
+1. 梗概是否被正文兑现:summary_status + summary_note(30-100 字)
+2. 每个节拍是否被正文兑现:逐拍 status + note(30-100 字)
+3. overall_note:60-150 字总评本章「写得是否按大纲走」、跑偏在哪、有没有意外的好
+
+要求:
+- 输出顺序必须和节拍顺序一致,beat_index 不能跳号
+- 如果章节没有节拍,beats 返回空数组
+- summary 为空时,summary_status 用 "missing",summary_note 写「本章未填梗概」
+
+输出 JSON,严格遵循:
+{
+  "summary_status": "covered",
+  "summary_note": "梗概里说的 X 在正文里如何兑现",
+  "beats": [
+    {
+      "beat_index": 0,
+      "status": "covered",
+      "note": "本拍说要 X,正文写到了 Y,兑现"
+    }
+  ],
+  "overall_note": "本章基本贴合大纲,只有第 N 拍有点弱化"
+}"""
+
 # ============ 5. 大纲建议(创建工程时) ============
 
 _OUTLINE_SYSTEM = "你是一位经验丰富的网络小说大纲编辑,擅长长篇结构安排。"
@@ -674,6 +772,30 @@ PROMPTS: tuple[PromptDef, ...] = (
         default_system=_STYLE_CHECK_SYSTEM,
         default_user=_STYLE_CHECK_USER,
         placeholders=("project_info", "chapter_label", "chapter_content"),
+    ),
+    PromptDef(
+        key="outline.suggest_batch",
+        name="批量草拟章节大纲",
+        group="outline",
+        description="大纲模式:为连续 N 章一次性草拟 title + summary + beats,确保章节之间承接顺畅。",
+        default_system=_SUGGEST_OUTLINES_BATCH_SYSTEM,
+        default_user=_SUGGEST_OUTLINES_BATCH_USER,
+        placeholders=(
+            "project_info", "synopsis_block", "threads_block",
+            "previous_summary", "count", "start_order_index",
+            "extra_instruction_block",
+        ),
+    ),
+    PromptDef(
+        key="chapter.outline_alignment",
+        name="章节-大纲一致性对账",
+        group="analysis",
+        description="把章节正文与计划大纲(梗概 + 节拍)对账,逐项给 covered / partial / missing。",
+        default_system=_OUTLINE_ALIGNMENT_SYSTEM,
+        default_user=_OUTLINE_ALIGNMENT_USER,
+        placeholders=(
+            "chapter_label", "summary_block", "beats_block", "chapter_content",
+        ),
     ),
     PromptDef(
         key="project.outline",

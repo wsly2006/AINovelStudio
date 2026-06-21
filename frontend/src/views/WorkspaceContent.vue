@@ -16,6 +16,7 @@ import AIAssistantDrawer from '../components/AIAssistantDrawer.vue'
 import ChapterScoreDialog from '../components/ChapterScoreDialog.vue'
 import ChapterStyleDialog from '../components/ChapterStyleDialog.vue'
 import ChapterBeatsDialog from '../components/ChapterBeatsDialog.vue'
+import OutlineAlignmentDialog from '../components/OutlineAlignmentDialog.vue'
 import AutoWriteDialog from '../components/AutoWriteDialog.vue'
 import AutoWriteProgressDrawer from '../components/AutoWriteProgressDrawer.vue'
 import { formatChapterFullTitle } from '../composables/chapterTitle'
@@ -54,6 +55,8 @@ const dialogTargetId = ref(null)
 const scoreVisible = ref(false)
 // AI 文风检查对话框
 const styleVisible = ref(false)
+// 大纲一致性对账对话框
+const outlineAlignVisible = ref(false)
 
 // 自动连写
 const autoWriteDialogVisible = ref(false)
@@ -486,6 +489,13 @@ async function onAIStyleCheck() {
   styleVisible.value = true
 }
 
+// 大纲对账:把当前章节的正文与计划好的 summary + beats 对账
+async function onOutlineAlign() {
+  if (!selectedChapter.value) return
+  await flushEditor()
+  outlineAlignVisible.value = true
+}
+
 // 评分弹窗里 创建/删除 后通知列表更新分数徽章
 function onScoreChanged({ chapterId, latestOverall }) {
   store.applyLatestScore(chapterId, latestOverall)
@@ -598,6 +608,7 @@ async function autoIndexAfterAI() {
           @summarize="onAISummarize"
           @index="onIndexChapter"
           @score="onAIScore"
+          @outline-align="onOutlineAlign"
           @assistant="onAIAssistant"
           @auto-write="onAIAutoWrite"
         />
@@ -667,6 +678,12 @@ async function autoIndexAfterAI() {
     :chapter-title="selectedChapterFullTitle"
     @changed="onStyleChanged"
     @jump-rewrite="onStyleJumpRewrite"
+  />
+
+  <OutlineAlignmentDialog
+    v-model="outlineAlignVisible"
+    :chapter-id="selectedChapter?.id || null"
+    :chapter-title="selectedChapterFullTitle"
   />
 
   <ChapterBeatsDialog

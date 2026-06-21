@@ -8,6 +8,10 @@ import ChapterItem from './ChapterItem.vue'
 const props = defineProps({
   chapters: { type: Array, required: true },
   selectedId: { type: Number, default: null },
+  // 'content' | 'outline':透传给 ChapterItem,大纲模式徽章不一样
+  mode: { type: String, default: 'content' },
+  // 大纲 tab 不需要新建按钮(批量草拟另开口)
+  hideCreate: { type: Boolean, default: false },
 })
 const emit = defineEmits(['select', 'create', 'rename', 'delete', 'reorder', 'edit'])
 
@@ -25,7 +29,7 @@ const countText = computed(() => t('workspace.chapterCount', { n: props.chapters
   <div class="chapter-list">
     <div class="header">
       <span class="title">{{ t('workspace.chapterListTitle') }} <span class="count">({{ countText }})</span></span>
-      <el-button type="primary" size="small" :icon="Plus" @click="emit('create')">
+      <el-button v-if="!hideCreate" type="primary" size="small" :icon="Plus" @click="emit('create')">
         {{ t('workspace.newChapter') }}
       </el-button>
     </div>
@@ -47,6 +51,7 @@ const countText = computed(() => t('workspace.chapterCount', { n: props.chapters
           <ChapterItem
             :chapter="element"
             :active="element.id === selectedId"
+            :mode="mode"
             @select="emit('select', $event)"
             @rename="emit('rename', $event)"
             @delete="emit('delete', $event)"

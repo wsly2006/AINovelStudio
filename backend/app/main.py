@@ -16,6 +16,7 @@ from app.api import (
     health,
     items,
     ladders,
+    outline,
     platforms,
     plot_threads,
     projects,
@@ -104,3 +105,5 @@ app.include_router(prompts.router)
 app.include_router(export.router)
 app.include_router(stats.router)
 app.include_router(platforms.router)
+app.include_router(outline.project_router)
+app.include_router(outline.chapter_router)

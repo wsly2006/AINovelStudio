@@ -23,6 +23,11 @@ const routes = [
         component: () => import('../views/WorkspaceContent.vue'),
       },
       {
+        path: 'outline',
+        name: 'workspace-outline',
+        component: () => import('../views/WorkspaceOutline.vue'),
+      },
+      {
         path: 'characters',
         name: 'workspace-characters',
         component: () => import('../views/WorkspaceCharacters.vue'),

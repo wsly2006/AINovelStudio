@@ -378,6 +378,45 @@ def build_suggest_beats_messages(
     return prompt_service.render(db, "chapter.suggest_beats", values)
 
 
+def build_suggest_outlines_batch_messages(
+    project: Project,
+    previous: list[Chapter],
+    *,
+    count: int,
+    start_order_index: int,
+    extra_instruction: str | None = None,
+    plot_threads: list[PlotThread] | None = None,
+    db=None,
+) -> list[dict]:
+    """批量章节大纲。previous 为整段大纲之前的所有章节(已写或已大纲)。"""
+    values = {
+        "project_info": _project_context(project),
+        "synopsis_block": _synopsis_context(project),
+        "threads_block": _threads_context(plot_threads or []),
+        "previous_summary": _previous_chapters_context(previous, None),
+        "count": str(count),
+        "start_order_index": str(start_order_index),
+        "extra_instruction_block": _extra_instruction_block(extra_instruction),
+    }
+    return prompt_service.render(db, "outline.suggest_batch", values)
+
+
+def build_outline_alignment_messages(
+    chapter: Chapter,
+    *,
+    db=None,
+) -> list[dict]:
+    """章节正文 vs 大纲对账(summary + beats)。"""
+    summary = (chapter.summary or "").strip() or "(本章未填梗概)"
+    values = {
+        "chapter_label": _chapter_label(chapter),
+        "summary_block": summary,
+        "beats_block": _beats_context(chapter.beats, None) or "(本章未列节拍)",
+        "chapter_content": (chapter.content or "").strip() or "(正文为空)",
+    }
+    return prompt_service.render(db, "chapter.outline_alignment", values)
+
+
 def build_score_messages(
     project: Project,
     chapter: Chapter,

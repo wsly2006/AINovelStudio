@@ -3,7 +3,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-ChapterStatus = Literal["draft", "writing", "done"]
+ChapterStatus = Literal["draft", "outlined", "writing", "done"]
 
 
 class ChapterBeat(BaseModel):
@@ -156,6 +156,62 @@ class BeatsAlignmentResponse(BaseModel):
     """对账接口返回:每个节拍的覆盖状态 + 整体计数。"""
 
     items: list[BeatAlignmentItem]
+    covered: int
+    partial: int
+    missing: int
+
+
+# ── 大纲模式相关 ───────────────────────────────────────
+
+class OutlineDraft(BaseModel):
+    """批量草拟接口返回的单个章节草稿,不落库。"""
+
+    title: str = Field(default="", max_length=200)
+    summary: str | None = Field(default=None, max_length=4000)
+    beats: list[ChapterBeat] = Field(default_factory=list, max_length=20)
+
+
+class OutlineBatchSuggestRequest(BaseModel):
+    """批量草拟入参。"""
+
+    count: int = Field(default=10, ge=1, le=30)
+    # 起始位置:留空 = 末尾追加;给值 = 从该 order_index 开始(必须存在)
+    start_order_index: int | None = Field(default=None, ge=1)
+    extra_instruction: str | None = Field(default=None, max_length=2000)
+    target_word_count: int = Field(default=4000, ge=500, le=20000)
+
+
+class OutlineBatchSuggestResponse(BaseModel):
+    drafts: list[OutlineDraft]
+
+
+class OutlineBatchCreateRequest(BaseModel):
+    """确认落库:把草稿数组追加为新章节(末尾追加,status='outlined')。"""
+
+    drafts: list[OutlineDraft] = Field(min_length=1, max_length=30)
+
+
+class OutlineBatchCreateResponse(BaseModel):
+    chapters: list[ChapterListItem]
+
+
+OutlineAlignmentStatus = Literal["covered", "partial", "missing"]
+
+
+class OutlineBeatAlignment(BaseModel):
+    beat_index: int = Field(ge=0)
+    status: OutlineAlignmentStatus
+    note: str | None = Field(default=None, max_length=400)
+
+
+class OutlineAlignmentResult(BaseModel):
+    """章节正文与大纲对账结果。"""
+
+    summary_status: OutlineAlignmentStatus
+    summary_note: str | None = Field(default=None, max_length=400)
+    beats: list[OutlineBeatAlignment]
+    overall_note: str | None = Field(default=None, max_length=600)
+    # 计数(从 beats + summary 派生,前端徽章用)
     covered: int
     partial: int
     missing: int

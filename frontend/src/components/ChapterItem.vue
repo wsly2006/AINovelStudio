@@ -7,6 +7,9 @@ import { formatChapterFullTitle } from '../composables/chapterTitle'
 const props = defineProps({
   chapter: { type: Object, required: true },
   active: { type: Boolean, default: false },
+  // 'content' = 正文 tab(默认),显示字数 / 评分 / 文风徽章
+  // 'outline' = 大纲 tab,改显节拍数 / 梗概一行预览
+  mode: { type: String, default: 'content' },
 })
 const emit = defineEmits(['select', 'rename', 'delete', 'edit'])
 
@@ -23,6 +26,7 @@ const wordCountText = computed(() => {
 const statusText = computed(() => {
   const map = {
     draft: t('workspace.statusDraft'),
+    outlined: t('workspace.statusOutlined'),
     writing: t('workspace.statusWriting'),
     done: t('workspace.statusDone'),
   }
@@ -30,7 +34,12 @@ const statusText = computed(() => {
 })
 
 const statusType = computed(() => {
-  return { draft: 'info', writing: 'warning', done: 'success' }[props.chapter.status] || 'info'
+  return {
+    draft: 'info',
+    outlined: 'primary',
+    writing: 'warning',
+    done: 'success',
+  }[props.chapter.status] || 'info'
 })
 
 // 评分徽章:有分才显示,颜色按分段
@@ -50,6 +59,14 @@ const styleColor = computed(() => {
   const n = styleCount.value
   if (n == null) return ''
   return n === 0 ? '#00b42a' : '#f53f3f'
+})
+
+// 大纲 tab 用:节拍数(列表 schema 没带 beats 数组,从 latest_beats_count 字段读;
+// 后端目前没有这个字段,先留 null,WorkspaceOutline 选中时通过 detail 接口拿)
+const beatsCount = computed(() => props.chapter.beats_count ?? null)
+const summaryPreview = computed(() => {
+  const s = (props.chapter.summary || '').trim()
+  return s ? s.replace(/\s+/g, ' ').slice(0, 60) : ''
 })
 
 function onCommand(cmd) {
@@ -82,28 +99,39 @@ function onCommand(cmd) {
     </div>
     <div class="row2">
       <el-tag :type="statusType" size="small" effect="plain">{{ statusText }}</el-tag>
-      <span class="words">{{ wordCountText }}</span>
-      <span
-        v-if="styleCount != null"
-        class="style-badge"
-        :style="{ background: styleColor }"
-        :title="
-          styleCount === 0
-            ? 'AI 文风检查:无明显 AI 味段落'
-            : `AI 文风检查:发现 ${styleCount} 处需重写`
-        "
-      >
-        <span v-if="styleCount === 0">✓</span>
-        <span v-else>AI×{{ styleCount }}</span>
-      </span>
-      <span
-        v-if="score != null"
-        class="score-badge"
-        :style="{ background: scoreColor }"
-        :title="`AI 综合评分:${score}/10`"
-      >
-        {{ score }}
-      </span>
+
+      <template v-if="mode === 'outline'">
+        <span v-if="beatsCount != null" class="beats-tag" :title="t('outline.beatsCountTitle')">
+          {{ t('outline.beatsCountTag', { n: beatsCount }) }}
+        </span>
+      </template>
+      <template v-else>
+        <span class="words">{{ wordCountText }}</span>
+        <span
+          v-if="styleCount != null"
+          class="style-badge"
+          :style="{ background: styleColor }"
+          :title="
+            styleCount === 0
+              ? 'AI 文风检查:无明显 AI 味段落'
+              : `AI 文风检查:发现 ${styleCount} 处需重写`
+          "
+        >
+          <span v-if="styleCount === 0">✓</span>
+          <span v-else>AI×{{ styleCount }}</span>
+        </span>
+        <span
+          v-if="score != null"
+          class="score-badge"
+          :style="{ background: scoreColor }"
+          :title="`AI 综合评分:${score}/10`"
+        >
+          {{ score }}
+        </span>
+      </template>
+    </div>
+    <div v-if="mode === 'outline' && summaryPreview" class="summary-preview">
+      {{ summaryPreview }}
     </div>
   </div>
 </template>
@@ -200,5 +228,24 @@ function onCommand(cmd) {
    后者紧贴文风徽章右侧 */
 .style-badge + .score-badge {
   margin-left: 4px;
+}
+.beats-tag {
+  margin-left: auto;
+  font-size: 11px;
+  color: #4080ff;
+  background: #ecf5ff;
+  padding: 2px 8px;
+  border-radius: 9px;
+  font-variant-numeric: tabular-nums;
+}
+.summary-preview {
+  margin-top: 6px;
+  padding-left: 22px;
+  font-size: 12px;
+  color: #86909c;
+  line-height: 1.5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>
