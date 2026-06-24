@@ -64,6 +64,7 @@ def _import_all_models() -> None:
     from app.models import settings as _settings  # noqa: F401
     from app.models import state_event as _state_event  # noqa: F401
     from app.models import task as _task  # noqa: F401
+    from app.models import translation_glossary as _translation_glossary  # noqa: F401
     from app.models import world_entity as _world_entity  # noqa: F401
 
 

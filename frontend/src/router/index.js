@@ -63,6 +63,11 @@ const routes = [
         component: () => import('../views/WorkspaceLadders.vue'),
       },
       {
+        path: 'glossary',
+        name: 'workspace-glossary',
+        component: () => import('../views/WorkspaceGlossary.vue'),
+      },
+      {
         path: 'tasks',
         name: 'workspace-tasks',
         component: () => import('../views/WorkspaceTasks.vue'),

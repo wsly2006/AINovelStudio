@@ -24,6 +24,7 @@ from app.api import (
     state_events,
     stats,
     tasks,
+    translation_glossary,
     world,
 )
 from app.api import (
@@ -107,3 +108,5 @@ app.include_router(stats.router)
 app.include_router(platforms.router)
 app.include_router(outline.project_router)
 app.include_router(outline.chapter_router)
+app.include_router(translation_glossary.project_router)
+app.include_router(translation_glossary.entry_router)

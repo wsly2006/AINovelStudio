@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { Document, User, Share, Reading, Compass, TrendCharts, Flag, Box, Connection, Promotion, Notebook } from '@element-plus/icons-vue'
+import { Document, User, Share, Reading, Compass, TrendCharts, Flag, Box, Connection, Promotion, Notebook, Memo } from '@element-plus/icons-vue'
 import { useWorkspaceStore } from '../stores/workspace'
 
 const props = defineProps({
@@ -24,6 +24,7 @@ const NAV_ITEMS = computed(() => {
     { name: 'workspace-threads', labelKey: 'workspaceTab.threads', icon: Connection },
     { name: 'workspace-plot', labelKey: 'workspaceTab.plot', icon: Reading },
     { name: 'workspace-world', labelKey: 'workspaceTab.world', icon: Compass },
+    { name: 'workspace-glossary', labelKey: 'workspaceTab.glossary', icon: Memo },
     { name: 'workspace-tasks', labelKey: 'workspaceTab.tasks', icon: Flag },
   ]
   if (workspace.project?.progression_enabled) {
