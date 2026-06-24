@@ -1,14 +1,20 @@
+import json
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
+from sse_starlette.sse import EventSourceResponse
 
+from app.ai.client import AIError, AINotConfiguredError
 from app.database import get_db
 from app.schemas.translation_glossary import (
     GlossaryCreate,
+    GlossaryExtractRequest,
     GlossaryRead,
     GlossarySeedRequest,
     GlossarySeedResult,
     GlossaryUpdate,
 )
+from app.services import glossary_extract_service
 from app.services import translation_glossary_service as svc
 from app.services.translation_glossary_service import (
     GlossaryConflictError,
@@ -82,6 +88,38 @@ def seed_entries(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="工程不存在"
         ) from e
+
+
+@project_router.post("/extract")
+async def extract_glossary(
+    project_id: int,
+    body: GlossaryExtractRequest,
+    db: Session = Depends(get_db),
+) -> EventSourceResponse:
+    async def gen():
+        try:
+            async for evt in glossary_extract_service.extract_glossary(
+                db,
+                project_id,
+                target_lang=body.target_lang,
+                chapter_ids=body.chapter_ids,
+            ):
+                yield {
+                    "event": evt["event"],
+                    "data": json.dumps(evt["data"], ensure_ascii=False),
+                }
+        except AINotConfiguredError as e:
+            yield {
+                "event": "error",
+                "data": json.dumps({"message": str(e)}, ensure_ascii=False),
+            }
+        except AIError as e:
+            yield {
+                "event": "error",
+                "data": json.dumps({"message": str(e)}, ensure_ascii=False),
+            }
+
+    return EventSourceResponse(gen())
 
 
 @entry_router.get("/{entry_id}", response_model=GlossaryRead)

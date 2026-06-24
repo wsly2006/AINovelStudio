@@ -759,6 +759,14 @@ export default {
     seedDoneCreated: '已新增 {n} 条',
     seedDoneSummary: '新增 {created} / 跳过 {skipped} / 更新 {updated}',
     seedFailed: '批量导入失败',
+    extractButton: 'AI 抽取',
+    extractDrawerTitle: 'AI 抽取术语候选',
+    extractDrawerHint:
+      '扫描全本章节,识别值得入库的中文专有名词。译法保留为空,稍后批量翻译。',
+    extractStart: '开始抽取',
+    extractCancel: '取消',
+    extractDone: '已新增 {added} 条,跳过 {skipped} 条',
+    extractFailed: 'AI 抽取失败',
   },
 
   ladders: {

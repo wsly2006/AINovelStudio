@@ -1,8 +1,26 @@
 from fastapi.testclient import TestClient
+import pytest
+
+from app.ai import client as ai_client_module
 
 
 def _create_project(client: TestClient, name: str = "工程G") -> int:
     return client.post("/api/projects", json={"name": name}).json()["id"]
+
+
+def _stub_complete(payload: str):
+    async def _fn(*args, **kwargs):
+        return payload
+    return _fn
+
+
+def _make_chapter(client: TestClient, project_id: int, title: str, content: str) -> int:
+    cid = client.post(
+        f"/api/projects/{project_id}/chapters", json={"title": title}
+    ).json()["id"]
+    if content:
+        client.put(f"/api/chapters/{cid}/content", json={"content": content})
+    return cid
 
 
 # ── CRUD ──────────────────────────────────────────────
@@ -283,3 +301,114 @@ def test_seed_overwrite_realigns_entry_type(client: TestClient) -> None:
     assert body["updated"] == 1
     after = client.get(f"/api/glossary/{eid}").json()
     assert after["entry_type"] == "person"
+
+
+# ── AI 抽取 (M2) ──────────────────────────────────────
+
+
+def test_extract_dedup_against_existing(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """已存在的 source 在抽取时跳过,不会重复入库"""
+    pid = _create_project(client)
+    # 预置一条「李慕白」
+    client.post(
+        f"/api/projects/{pid}/glossary",
+        json={"source": "李慕白", "entry_type": "person"},
+    )
+    _make_chapter(client, pid, "首章", "李慕白与张飞相遇于山道。")
+
+    monkeypatch.setattr(
+        ai_client_module,
+        "complete",
+        _stub_complete(
+            '{"entries": ['
+            '{"source": "李慕白", "entry_type": "person", "rationale": "本章角色"},'
+            '{"source": "张飞", "entry_type": "person", "rationale": "本章新角色"}'
+            ']}'
+        ),
+    )
+    with client.stream(
+        "POST",
+        f"/api/projects/{pid}/glossary/extract",
+        json={"target_lang": "en-US"},
+    ) as r:
+        assert r.status_code == 200
+        body = b"".join(r.iter_bytes()).decode()
+
+    assert "event: start" in body
+    assert "event: progress" in body
+    assert "event: done" in body
+
+    listed = client.get(f"/api/projects/{pid}/glossary").json()
+    sources = {it["source"] for it in listed}
+    assert sources == {"李慕白", "张飞"}
+
+
+def test_extract_invalid_type_falls_back_to_other(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    pid = _create_project(client)
+    _make_chapter(client, pid, "首章", "莫名其妙的咒语:咕噜咕噜。")
+
+    monkeypatch.setattr(
+        ai_client_module,
+        "complete",
+        _stub_complete(
+            '{"entries": [{"source": "咕噜咕噜", "entry_type": "wizard"}]}'
+        ),
+    )
+    with client.stream(
+        "POST",
+        f"/api/projects/{pid}/glossary/extract",
+        json={"target_lang": "en-US"},
+    ) as r:
+        assert r.status_code == 200
+        b"".join(r.iter_bytes())
+
+    listed = client.get(f"/api/projects/{pid}/glossary").json()
+    assert len(listed) == 1
+    assert listed[0]["source"] == "咕噜咕噜"
+    assert listed[0]["entry_type"] == "other"
+
+
+def test_extract_skips_empty_chapter(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """空正文章节直接 progress + skip,不调 AI"""
+    pid = _create_project(client)
+    _make_chapter(client, pid, "空章", "")
+
+    called = False
+
+    async def _fail_if_called(*args, **kwargs):
+        nonlocal called
+        called = True
+        return ""
+
+    monkeypatch.setattr(ai_client_module, "complete", _fail_if_called)
+    with client.stream(
+        "POST",
+        f"/api/projects/{pid}/glossary/extract",
+        json={"target_lang": "en-US"},
+    ) as r:
+        assert r.status_code == 200
+        body = b"".join(r.iter_bytes()).decode()
+
+    assert not called
+    assert '"empty": true' in body
+    assert client.get(f"/api/projects/{pid}/glossary").json() == []
+
+
+def test_extract_no_chapters_streams_done_immediately(client: TestClient) -> None:
+    """工程没有章节时,直接 done,不会卡住"""
+    pid = _create_project(client)
+    with client.stream(
+        "POST",
+        f"/api/projects/{pid}/glossary/extract",
+        json={"target_lang": "en-US"},
+    ) as r:
+        assert r.status_code == 200
+        body = b"".join(r.iter_bytes()).decode()
+    assert "event: done" in body
+    assert '"total": 0' in body

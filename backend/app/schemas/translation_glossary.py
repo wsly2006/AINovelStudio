@@ -97,3 +97,9 @@ class GlossarySeedResult(BaseModel):
     created: int
     skipped: int
     updated: int
+
+
+class GlossaryExtractRequest(BaseModel):
+    target_lang: str = Field(default="en-US", min_length=2, max_length=8)
+    # None = 扫全工程章节;指定 id 列表则只扫这些章
+    chapter_ids: list[int] | None = None

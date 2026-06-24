@@ -3,9 +3,10 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Download, Lock } from '@element-plus/icons-vue'
+import { Plus, Download, Lock, MagicStick } from '@element-plus/icons-vue'
 import { useGlossaryStore } from '../stores/glossary'
 import GlossaryEntryDialog from '../components/GlossaryEntryDialog.vue'
+import GlossaryExtractDrawer from '../components/GlossaryExtractDrawer.vue'
 
 const route = useRoute()
 const { t } = useI18n()
@@ -24,6 +25,8 @@ const dialogInitial = ref(null)
 const seedDialogVisible = ref(false)
 const seedOverwrite = ref(false)
 const seedSubmitting = ref(false)
+
+const extractDrawerVisible = ref(false)
 
 const TYPE_OPTIONS = ['person', 'place', 'org', 'term', 'skill', 'item', 'other']
 const LANG_OPTIONS = [
@@ -154,6 +157,11 @@ async function onToggleLock(row) {
     ElMessage.error(e.message || t('common.failed'))
   }
 }
+
+async function onExtractCompleted() {
+  // 抽取完成后刷新列表;抽屉自己留着让用户看 summary,关闭由用户点确定触发
+  await reload()
+}
 </script>
 
 <template>
@@ -167,6 +175,9 @@ async function onToggleLock(row) {
         <span class="hint">{{ t('glossary.pageHint') }}</span>
       </div>
       <div class="actions">
+        <el-button :icon="MagicStick" @click="extractDrawerVisible = true">
+          {{ t('glossary.extractButton') }}
+        </el-button>
         <el-button :icon="Download" @click="openSeedDialog">
           {{ t('glossary.seedFromProject') }}
         </el-button>
@@ -260,6 +271,13 @@ async function onToggleLock(row) {
       :editing-id="dialogEditingId"
       :initial="dialogInitial"
       @submit="onDialogSubmit"
+    />
+
+    <GlossaryExtractDrawer
+      v-model="extractDrawerVisible"
+      :project-id="projectId"
+      :default-target-lang="filterLang"
+      @completed="onExtractCompleted"
     />
 
     <el-dialog
