@@ -9,6 +9,8 @@ import { chaptersApi } from '../api/chapters'
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
   chapterId: { type: Number, default: null },
+  // 打开后默认选中的语种过滤;'' 表示混排所有语种
+  initialLang: { type: String, default: '' },
 })
 const emit = defineEmits(['update:modelValue', 'restored'])
 
@@ -21,31 +23,47 @@ const detailLoading = ref(false)
 const viewMode = ref('content')
 // 当前章节正文,用于"版本 vs 当前"对比
 const currentContent = ref('')
+// 语种过滤:''=全部, 'zh-CN', 'en-US', ...
+const langFilter = ref('')
+const LANG_OPTIONS = [
+  { value: '', label: '全部' },
+  { value: 'zh-CN', label: '中文' },
+  { value: 'en-US', label: 'English' },
+  { value: 'es-ES', label: 'Español' },
+  { value: 'id-ID', label: 'Indonesia' },
+  { value: 'ja-JP', label: '日本語' },
+  { value: 'ko-KR', label: '한국어' },
+  { value: 'vi-VN', label: 'Tiếng Việt' },
+]
 
 const REASON_LABEL = {
   ai_overwrite: 'AI 覆盖前',
   manual: '手动保存',
   restore: '还原前',
+  translated: 'AI 翻译',
 }
 
 const REASON_TYPE = {
   ai_overwrite: 'warning',
   manual: 'success',
   restore: 'info',
+  translated: 'primary',
 }
 
 async function loadList() {
   if (!props.chapterId) return
   loading.value = true
   try {
+    const params = langFilter.value ? { lang: langFilter.value } : {}
     const [list, current] = await Promise.all([
-      chapterVersionsApi.list(props.chapterId),
+      chapterVersionsApi.list(props.chapterId, params),
       chaptersApi.get(props.chapterId),
     ])
     versions.value = list
     currentContent.value = current.content || ''
     selected.value = list[0] || null
     if (selected.value) await loadDetail(selected.value.id)
+    else detailContent.value = ''
   } catch (e) {
     ElMessage.error(e.message || '加载历史失败')
   } finally {
@@ -71,6 +89,7 @@ watch(
   (v) => {
     if (v) {
       viewMode.value = 'content'
+      langFilter.value = props.initialLang || ''
       loadList()
     } else {
       versions.value = []
@@ -80,6 +99,11 @@ watch(
     }
   }
 )
+
+// 切换 lang 过滤要重新拉
+watch(langFilter, () => {
+  if (props.modelValue) loadList()
+})
 
 function onSelect(v) {
   if (selected.value?.id === v.id) return
@@ -147,7 +171,18 @@ function formatTime(s) {
   return `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-const versionCountText = computed(() => `${versions.value.length} / 5 个版本`)
+const versionCountText = computed(() => {
+  const total = versions.value.length
+  if (langFilter.value) return `${total} / 5 个版本(${langFilter.value})`
+  return `${total} 个版本`
+})
+
+// 译版不能 restore 回 chapter.content,UI 层显式禁用
+const canRestore = computed(() => {
+  if (!selected.value) return false
+  const lang = selected.value.lang || 'zh-CN'
+  return lang === 'zh-CN'
+})
 
 // diff 行:左侧版本(detailContent) → 右侧当前(currentContent)。
 // added=当前比版本多的,removed=版本里有但当前没的。语义上读"从这个版本到现在改了什么"。
@@ -187,7 +222,15 @@ const diffSummary = computed(() => {
   >
     <div class="hint-bar">
       <span>{{ versionCountText }}</span>
-      <span class="hint">超过 5 条会自动淘汰最旧的</span>
+      <el-select v-model="langFilter" size="small" class="lang-filter">
+        <el-option
+          v-for="opt in LANG_OPTIONS"
+          :key="opt.value || '__all__'"
+          :label="opt.label"
+          :value="opt.value"
+        />
+      </el-select>
+      <span class="hint">每个语种各保留 5 条最新版本</span>
     </div>
 
     <div class="layout" v-loading="loading">
@@ -205,6 +248,14 @@ const diffSummary = computed(() => {
           <div class="ver-head">
             <el-tag :type="REASON_TYPE[v.reason] || 'info'" size="small">
               {{ REASON_LABEL[v.reason] || v.reason }}
+            </el-tag>
+            <el-tag
+              v-if="v.lang && v.lang !== 'zh-CN'"
+              size="small"
+              type="warning"
+              effect="plain"
+            >
+              {{ v.lang }}
             </el-tag>
             <span class="ver-time">{{ formatTime(v.created_at) }}</span>
             <el-button
@@ -258,7 +309,21 @@ const diffSummary = computed(() => {
 
     <template #footer>
       <el-button @click="close">取消</el-button>
-      <el-button type="primary" :disabled="!selected" @click="onRestore">还原此版本</el-button>
+      <el-tooltip
+        :disabled="canRestore"
+        content="翻译版本不支持还原(中文正文是真相,翻译只读)"
+        placement="top"
+      >
+        <span>
+          <el-button
+            type="primary"
+            :disabled="!selected || !canRestore"
+            @click="onRestore"
+          >
+            还原此版本
+          </el-button>
+        </span>
+      </el-tooltip>
     </template>
   </el-dialog>
 </template>
@@ -266,13 +331,18 @@ const diffSummary = computed(() => {
 <style scoped>
 .hint-bar {
   display: flex;
-  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
   font-size: 12px;
   color: #86909c;
   margin-bottom: 12px;
 }
+.hint-bar .lang-filter {
+  width: 130px;
+}
 .hint-bar .hint {
   color: #c9cdd4;
+  margin-left: auto;
 }
 .layout {
   display: grid;

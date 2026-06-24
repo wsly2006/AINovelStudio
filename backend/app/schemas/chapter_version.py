@@ -3,7 +3,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-VersionReason = Literal["ai_overwrite", "manual", "restore"]
+VersionReason = Literal["ai_overwrite", "manual", "restore", "translated"]
 
 
 class ChapterVersionListItem(BaseModel):
@@ -16,6 +16,7 @@ class ChapterVersionListItem(BaseModel):
     word_count: int
     reason: VersionReason
     label: str | None
+    lang: str = "zh-CN"
     created_at: datetime
     # 给前端列表预览用的摘要,服务层填充
     preview: str = ""
@@ -32,6 +33,7 @@ class ChapterVersionDetail(BaseModel):
     word_count: int
     reason: VersionReason
     label: str | None
+    lang: str = "zh-CN"
     created_at: datetime
 
 
@@ -39,3 +41,4 @@ class ChapterVersionCreate(BaseModel):
     """手动快照请求体。"""
 
     label: str | None = Field(default=None, max_length=120)
+

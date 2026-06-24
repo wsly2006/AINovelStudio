@@ -607,6 +607,36 @@ person | place | org | term | skill | item | other
   ]
 }"""
 
+# ============ 7c. 章节翻译 ============
+
+_TRANSLATE_SYSTEM = (
+    "你是一名专业的中文-外语小说翻译。"
+    "严格按提供的术语表保持名词一致,跨章不漂移。"
+    "保留原文段落结构,段落之间只用单个换行符。"
+    "用目标语言自然行文,不直译成生硬中式英语。"
+    "输出仅包含译文正文,不带 Markdown 代码块、注释或解释性文字。"
+)
+
+_TRANSLATE_USER = """目标语言:{{target_lang_label}}
+
+工程信息:{{project_info}}
+
+{{synopsis_block}}
+
+【术语对照表】(同一中文必须翻成对应译文,这是硬约束):
+{{glossary_block}}
+
+前序章节梗概:{{previous_summary}}
+
+现在请把【{{chapter_label}}】翻译为目标语言,严格遵守术语表。
+
+中文原文:
+---
+{{original_content}}
+---
+
+{{extra_instruction_block}}请直接输出目标语言译文,不要重复中文原文,不要加任何标题或编号。"""
+
 # ============ 8. 关系抽取 ============
 
 _EXTRACT_REL_SYSTEM = (
@@ -908,6 +938,24 @@ PROMPTS: tuple[PromptDef, ...] = (
         default_system=_EXTRACT_GLOSSARY_SYSTEM,
         default_user=_EXTRACT_GLOSSARY_USER,
         placeholders=("existing_glossary", "chapter_label", "chapter_content"),
+    ),
+    PromptDef(
+        key="chapter.translate",
+        name="章节翻译",
+        group="translate",
+        description="把中文章节翻译到目标语言,严格遵循术语表对照。",
+        default_system=_TRANSLATE_SYSTEM,
+        default_user=_TRANSLATE_USER,
+        placeholders=(
+            "target_lang_label",
+            "project_info",
+            "synopsis_block",
+            "glossary_block",
+            "previous_summary",
+            "chapter_label",
+            "original_content",
+            "extra_instruction_block",
+        ),
     ),
     PromptDef(
         key="extract.relation",

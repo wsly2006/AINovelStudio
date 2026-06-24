@@ -17,6 +17,7 @@ import ChapterScoreDialog from '../components/ChapterScoreDialog.vue'
 import ChapterStyleDialog from '../components/ChapterStyleDialog.vue'
 import ChapterBeatsDialog from '../components/ChapterBeatsDialog.vue'
 import OutlineAlignmentDialog from '../components/OutlineAlignmentDialog.vue'
+import ChapterTranslateDrawer from '../components/ChapterTranslateDrawer.vue'
 import AutoWriteDialog from '../components/AutoWriteDialog.vue'
 import AutoWriteProgressDrawer from '../components/AutoWriteProgressDrawer.vue'
 import { formatChapterFullTitle } from '../composables/chapterTitle'
@@ -58,6 +59,9 @@ const scoreVisible = ref(false)
 const styleVisible = ref(false)
 // 大纲一致性对账对话框
 const outlineAlignVisible = ref(false)
+// 章节翻译抽屉(M3)
+const translateDrawerVisible = ref(false)
+const glossaryCount = ref(0)
 
 // 自动连写
 const autoWriteDialogVisible = ref(false)
@@ -513,6 +517,31 @@ async function onOutlineAlign() {
   outlineAlignVisible.value = true
 }
 
+// 章节翻译:把中文正文翻成目标语言,落 chapter_versions 不动 chapter.content
+async function onAITranslate() {
+  if (!selectedChapter.value) return
+  await flushEditor()
+  await flushSummary()
+  // 拉一下当前工程的术语表条数,只用于 hint;不阻塞抽屉打开
+  try {
+    const projectId = Number(route.params.id)
+    const list = await fetch(
+      `/api/projects/${projectId}/glossary?target_lang=en-US`,
+    ).then((r) => (r.ok ? r.json() : []))
+    glossaryCount.value = Array.isArray(list) ? list.length : 0
+  } catch {
+    glossaryCount.value = 0
+  }
+  translateDrawerVisible.value = true
+}
+
+function onTranslated() {
+  ElMessage.success(t('translate.done', {
+    n: 0,
+    vid: '',
+  }).split(',')[0])
+}
+
 // 评分弹窗里 创建/删除 后通知列表更新分数徽章
 function onScoreChanged({ chapterId, latestOverall }) {
   store.applyLatestScore(chapterId, latestOverall)
@@ -626,6 +655,7 @@ async function autoIndexAfterAI() {
           @index="onIndexChapter"
           @score="onAIScore"
           @outline-align="onOutlineAlign"
+          @translate="onAITranslate"
           @assistant="onAIAssistant"
           @auto-write="onAIAutoWrite"
         />
@@ -701,6 +731,13 @@ async function autoIndexAfterAI() {
     v-model="outlineAlignVisible"
     :chapter-id="selectedChapter?.id || null"
     :chapter-title="selectedChapterFullTitle"
+  />
+
+  <ChapterTranslateDrawer
+    v-model="translateDrawerVisible"
+    :chapter-id="selectedChapter?.id || null"
+    :glossary-count="glossaryCount"
+    @translated="onTranslated"
   />
 
   <ChapterBeatsDialog

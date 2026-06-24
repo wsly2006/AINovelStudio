@@ -9,6 +9,7 @@ from app.api import (
     analysis,
     chapter_scores,
     chapter_style_checks,
+    chapter_translation,
     chapter_versions,
     chapters,
     characters,
@@ -110,3 +111,4 @@ app.include_router(outline.project_router)
 app.include_router(outline.chapter_router)
 app.include_router(translation_glossary.project_router)
 app.include_router(translation_glossary.entry_router)
+app.include_router(chapter_translation.router)

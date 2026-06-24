@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -10,17 +10,22 @@ from app.schemas.chapter_version import (
 )
 from app.services import chapter_version_service
 from app.services.chapter_service import ChapterNotFoundError
-from app.services.chapter_version_service import ChapterVersionNotFoundError
+from app.services.chapter_version_service import (
+    ChapterVersionLangMismatchError,
+    ChapterVersionNotFoundError,
+)
 
 router = APIRouter(prefix="/api/chapters/{chapter_id}/versions", tags=["chapter-versions"])
 
 
 @router.get("", response_model=list[ChapterVersionListItem])
 def list_versions(
-    chapter_id: int, db: Session = Depends(get_db)
+    chapter_id: int,
+    lang: str | None = Query(default=None),
+    db: Session = Depends(get_db),
 ) -> list[ChapterVersionListItem]:
     try:
-        return chapter_version_service.list_versions(db, chapter_id)
+        return chapter_version_service.list_versions(db, chapter_id, lang=lang)
     except ChapterNotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="章节不存在") from e
 
@@ -91,6 +96,11 @@ def restore_version(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="版本不存在") from e
     except ChapterNotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="章节不存在") from e
+    except ChapterVersionLangMismatchError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="翻译版本不支持还原到正文(正文永远是中文)",
+        ) from e
     if c.id != chapter_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="版本与章节不匹配")
     return ChapterDetail.model_validate(c)

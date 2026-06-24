@@ -1,8 +1,10 @@
 import client from './client'
 
 export const chapterVersionsApi = {
-  list: (chapterId) =>
-    client.get(`/chapters/${chapterId}/versions`).then((r) => r.data),
+  list: (chapterId, params = {}) =>
+    client
+      .get(`/chapters/${chapterId}/versions`, { params })
+      .then((r) => r.data),
   get: (chapterId, versionId) =>
     client.get(`/chapters/${chapterId}/versions/${versionId}`).then((r) => r.data),
   // 手动快照

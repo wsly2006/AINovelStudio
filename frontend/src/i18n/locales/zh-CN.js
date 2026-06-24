@@ -372,6 +372,25 @@ export default {
     close: '关闭',
   },
 
+  translate: {
+    button: '翻译本章',
+    drawerTitle: '翻译本章',
+    drawerHint:
+      '按术语表把本章翻成目标语言,译文存为版本,不会改动中文正文。',
+    targetLangLabel: '目标语言',
+    extraInstructionLabel: '额外指令(可选)',
+    extraInstructionPlaceholder: '例:走 web novel 风、对话短句多一些',
+    glossaryHint: '已加载术语表 {n} 条,会全量随 prompt 注入',
+    start: '开始翻译',
+    cancel: '取消',
+    streaming: '正在翻译……',
+    streamingChars: '已生成约 {n} 字',
+    done: '已生成 {n} 字,保存为版本 #{vid}',
+    failed: '翻译失败',
+    viewInHistory: '查看版本',
+    emptyContent: '本章正文为空,无法翻译',
+  },
+
   editor: {
     placeholder: '在这里写下你的小说正文,支持 Markdown 语法',
     saveStateIdle: '未编辑',

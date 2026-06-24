@@ -96,6 +96,7 @@ _NEW_COLUMNS: list[tuple[str, str, str]] = [
     ("projects", "target_platform_codes", "JSON NOT NULL DEFAULT '[]'"),
     ("chapters", "beats", "JSON"),
     ("chapters", "beats_alignment", "JSON"),
+    ("chapter_versions", "lang", "VARCHAR(8) NOT NULL DEFAULT 'zh-CN'"),
     ("plot_events", "thread_id", "INTEGER REFERENCES plot_threads(id) ON DELETE SET NULL"),
     # 审稿模型(可选,留空回落写作模型)
     ("ai_settings", "review_provider", "VARCHAR(20)"),

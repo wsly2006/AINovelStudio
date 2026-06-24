@@ -1,13 +1,13 @@
 <script setup>
 import { onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { MagicStick, Edit, EditPen, Document, Connection, StarFilled, View, Tickets, ChatLineRound, VideoPlay, Aim } from '@element-plus/icons-vue'
+import { MagicStick, Edit, EditPen, Document, Connection, StarFilled, View, Tickets, ChatLineRound, VideoPlay, Aim, Promotion } from '@element-plus/icons-vue'
 import { useAIInfoStore } from '../stores/aiInfo'
 
 const props = defineProps({
   indexing: { type: Boolean, default: false },
 })
-const emit = defineEmits(['generate', 'continue', 'rewrite', 'summarize', 'index', 'score', 'styleCheck', 'beats', 'assistant', 'autoWrite', 'outlineAlign'])
+const emit = defineEmits(['generate', 'continue', 'rewrite', 'summarize', 'index', 'score', 'styleCheck', 'beats', 'assistant', 'autoWrite', 'outlineAlign', 'translate'])
 
 const { t } = useI18n()
 const info = useAIInfoStore()
@@ -74,6 +74,11 @@ const disabled = computed(() => !info.configured)
     <el-tooltip content="把章节正文与大纲(梗概 + 节拍)对账,逐项 covered / partial / missing" placement="top" :show-after="300">
       <el-button :disabled="disabled" :icon="Aim" @click="emit('outlineAlign')">
         {{ t('outlineAlign.button') }}
+      </el-button>
+    </el-tooltip>
+    <el-tooltip content="按术语表把本章翻译到目标语言,译文存为版本,不动中文正文" placement="top" :show-after="300">
+      <el-button :disabled="disabled" :icon="Promotion" @click="emit('translate')">
+        {{ t('translate.button') }}
       </el-button>
     </el-tooltip>
     <el-tooltip content="打开 AI 助手对话:基于当前工程 / 章节 / 选区多轮交流,可一键插入到编辑器" placement="top" :show-after="300">
