@@ -3,10 +3,11 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Download, Lock, MagicStick } from '@element-plus/icons-vue'
+import { Plus, Download, Lock, MagicStick, Aim } from '@element-plus/icons-vue'
 import { useGlossaryStore } from '../stores/glossary'
 import GlossaryEntryDialog from '../components/GlossaryEntryDialog.vue'
 import GlossaryExtractDrawer from '../components/GlossaryExtractDrawer.vue'
+import ConsistencyReportDialog from '../components/ConsistencyReportDialog.vue'
 
 const route = useRoute()
 const { t } = useI18n()
@@ -27,6 +28,7 @@ const seedOverwrite = ref(false)
 const seedSubmitting = ref(false)
 
 const extractDrawerVisible = ref(false)
+const consistencyDialogVisible = ref(false)
 
 const TYPE_OPTIONS = ['person', 'place', 'org', 'term', 'skill', 'item', 'other']
 const LANG_OPTIONS = [
@@ -175,6 +177,9 @@ async function onExtractCompleted() {
         <span class="hint">{{ t('glossary.pageHint') }}</span>
       </div>
       <div class="actions">
+        <el-button :icon="Aim" @click="consistencyDialogVisible = true">
+          {{ t('glossary.consistencyButton') }}
+        </el-button>
         <el-button :icon="MagicStick" @click="extractDrawerVisible = true">
           {{ t('glossary.extractButton') }}
         </el-button>
@@ -278,6 +283,12 @@ async function onExtractCompleted() {
       :project-id="projectId"
       :default-target-lang="filterLang"
       @completed="onExtractCompleted"
+    />
+
+    <ConsistencyReportDialog
+      v-model="consistencyDialogVisible"
+      :project-id="projectId"
+      :default-target-lang="filterLang"
     />
 
     <el-dialog

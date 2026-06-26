@@ -786,6 +786,16 @@ export default {
     extractCancel: '取消',
     extractDone: '已新增 {added} 条,跳过 {skipped} 条',
     extractFailed: 'AI 抽取失败',
+    consistencyButton: '一致性检查',
+    consistencyDialogTitle: '翻译一致性检查',
+    consistencyHint:
+      '扫每章的最新翻译版本,对术语表里 source 出现但 target 未出现的条目报警。',
+    consistencySummary:
+      '已扫 {chapters}/{total} 章,对照 {terms} 条术语,发现 {issues} 处疑似漂移',
+    consistencyAllGood: '术语对照全部命中,没找到漂移',
+    consistencyJump: '去本章',
+    consistencyRerun: '重新检查',
+    consistencyFailed: '一致性检查失败',
   },
 
   ladders: {

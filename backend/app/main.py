@@ -25,6 +25,7 @@ from app.api import (
     state_events,
     stats,
     tasks,
+    translation_consistency,
     translation_glossary,
     world,
 )
@@ -112,3 +113,4 @@ app.include_router(outline.chapter_router)
 app.include_router(translation_glossary.project_router)
 app.include_router(translation_glossary.entry_router)
 app.include_router(chapter_translation.router)
+app.include_router(translation_consistency.router)

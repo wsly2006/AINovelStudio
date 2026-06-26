@@ -16,4 +16,11 @@ export const glossaryApi = {
     client
       .post(`/projects/${projectId}/glossary/seed`, payload)
       .then((r) => r.data),
+  // M4:跨章一致性报告
+  checkConsistency: (projectId, targetLang = 'en-US') =>
+    client
+      .get(`/projects/${projectId}/translation-consistency`, {
+        params: { target_lang: targetLang },
+      })
+      .then((r) => r.data),
 }
