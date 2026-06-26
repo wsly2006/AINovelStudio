@@ -214,12 +214,12 @@ async function onManualSnapshot() {
   let label = ''
   try {
     const { value } = await ElMessageBox.prompt(
-      '给这个版本起一个备注(可选,80 字以内)',
-      '保存版本',
+      t('editor.versionLabelPrompt'),
+      t('editor.versionLabelDialogTitle'),
       {
-        confirmButtonText: '保存',
-        cancelButtonText: '取消',
-        inputValidator: (v) => (v && v.length > 80 ? '不超过 80 个字' : true),
+        confirmButtonText: t('editor.versionLabelConfirm'),
+        cancelButtonText: t('editor.versionLabelCancel'),
+        inputValidator: (v) => (v && v.length > 80 ? t('editor.versionLabelTooLong') : true),
         inputValue: '',
       }
     )
@@ -231,9 +231,9 @@ async function onManualSnapshot() {
   try {
     await flush()
     await chapterVersionsApi.createManual(editingChapterId.value, label || null)
-    ElMessage.success('已保存版本')
+    ElMessage.success(t('editor.versionSavedMsg'))
   } catch (e) {
-    ElMessage.error(e.message || '保存版本失败')
+    ElMessage.error(e.message || t('editor.versionSaveFailedMsg'))
   } finally {
     snapshotting.value = false
   }
@@ -249,7 +249,7 @@ async function onRestored(updatedChapter) {
   })
   content.value = text
   wordCount.value = updatedChapter?.word_count || 0
-  ElMessage.info('已还原到历史版本')
+  ElMessage.info(t('editor.versionRestoredMsg'))
 }
 
 // 右键菜单:仅在有选区时拦截浏览器原生菜单,弹出自定义项「改写选区」
@@ -329,7 +329,7 @@ function onMenuRewrite() {
         :loading="snapshotting"
         @click="onManualSnapshot"
       >
-        保存版本
+        {{ t('editor.versionSaveBtn') }}
       </el-button>
       <el-button
         text
@@ -337,7 +337,7 @@ function onMenuRewrite() {
         :icon="Clock"
         @click="historyVisible = true"
       >
-        历史
+        {{ t('editor.versionHistoryBtn') }}
       </el-button>
     </div>
     <div class="cm-host" ref="containerEl" v-loading="loading" @contextmenu="onContextMenu"></div>

@@ -402,6 +402,16 @@ export default {
     savedAtJustNow: '刚刚保存',
     savedAtMinutesAgo: '{n} 分钟前保存',
     contentLoadFailed: '正文加载失败',
+    versionSaveBtn: '保存版本',
+    versionHistoryBtn: '历史',
+    versionLabelDialogTitle: '保存版本',
+    versionLabelPrompt: '给这个版本起一个备注(可选,80 字以内)',
+    versionLabelConfirm: '保存',
+    versionLabelCancel: '取消',
+    versionLabelTooLong: '不超过 80 个字',
+    versionSavedMsg: '已保存版本',
+    versionSaveFailedMsg: '保存版本失败',
+    versionRestoredMsg: '已还原到历史版本',
   },
 
   ai: {
