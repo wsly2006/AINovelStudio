@@ -150,6 +150,8 @@ async def stream_chat(
     # Anthropic / 其它 provider 不识别也会被 litellm 忽略
     kwargs["stream_options"] = {"include_usage": True}
 
+    import asyncio
+
     import litellm
 
     started = time.monotonic()
@@ -176,6 +178,24 @@ async def stream_chat(
             text = getattr(delta, "content", None)
             if text:
                 yield text
+    except asyncio.CancelledError:
+        # SSE 客户端断开:starlette 把 CancelledError 投递进生成器。
+        # 写一条 cancelled 日志做可观测,然后照常抛出让外层(SessionLocal)正确收尾。
+        # LiteLLM 的 acompletion 收到 CancelledError 会自己尝试关掉上游连接,
+        # 这里不做额外处理,只确保日志里能看到「这次跑被取消了」。
+        _persist_log(
+            scene=scene,
+            cfg=cfg,
+            stream=True,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            total_tokens=total_tokens,
+            duration_ms=int((time.monotonic() - started) * 1000),
+            status="cancelled",
+            error=None,
+            project_id=project_id,
+        )
+        raise
     except Exception as e:
         status = "error"
         err_text = str(e)
