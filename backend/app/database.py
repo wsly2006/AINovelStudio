@@ -125,6 +125,36 @@ def _apply_lightweight_migrations() -> None:
                 continue
             conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {ddl}"))
 
+    # create_all 在迁移之前跑,那时 lang 列还不存在,带 lang 的索引建不出来;
+    # 这里在 ALTER 完成后补建,旧库才能拿到一致的索引。
+    _create_post_migration_indexes()
+
+
+_POST_MIGRATION_INDEXES: list[tuple[str, str, str]] = [
+    # (index_name, table, columns)
+    (
+        "ix_chapter_versions_chapter_lang_created",
+        "chapter_versions",
+        "chapter_id, lang, created_at",
+    ),
+]
+
+
+def _create_post_migration_indexes() -> None:
+    if not settings.database_url.startswith("sqlite"):
+        return
+    from sqlalchemy import text
+
+    with engine.begin() as conn:
+        for name, table, cols in _POST_MIGRATION_INDEXES:
+            # 表不存在时跳过(新库已经由 create_all 处理过,不会走到这里)
+            rows = conn.execute(text(f"PRAGMA table_info({table})")).fetchall()
+            if not rows:
+                continue
+            conn.execute(
+                text(f"CREATE INDEX IF NOT EXISTS {name} ON {table}({cols})")
+            )
+
 
 def _seed_platform_profiles() -> None:
     """启动时塞入预制平台 profile,已存在的同步结构字段。"""
