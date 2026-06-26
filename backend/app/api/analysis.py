@@ -60,21 +60,24 @@ def create_relation(
 async def extract_relations(
     project_id: int,
     body: _ExtractRequest | None = None,
-    db: Session = Depends(get_db),
 ) -> EventSourceResponse:
     chapter_ids = body.chapter_ids if body else None
 
+    # SSE 期间逐章 AI 抽取,session 在 generator 内自己起,不占路由依赖链上的连接。
     async def gen():
-        try:
-            async for evt in analysis_service.extract_relations(db, project_id, chapter_ids):
-                yield {
-                    "event": evt["event"],
-                    "data": json.dumps(evt["data"], ensure_ascii=False),
-                }
-        except AINotConfiguredError as e:
-            yield {"event": "error", "data": json.dumps({"message": str(e)}, ensure_ascii=False)}
-        except AIError as e:
-            yield {"event": "error", "data": json.dumps({"message": str(e)}, ensure_ascii=False)}
+        from app.database import SessionLocal
+
+        with SessionLocal() as db:
+            try:
+                async for evt in analysis_service.extract_relations(db, project_id, chapter_ids):
+                    yield {
+                        "event": evt["event"],
+                        "data": json.dumps(evt["data"], ensure_ascii=False),
+                    }
+            except AINotConfiguredError as e:
+                yield {"event": "error", "data": json.dumps({"message": str(e)}, ensure_ascii=False)}
+            except AIError as e:
+                yield {"event": "error", "data": json.dumps({"message": str(e)}, ensure_ascii=False)}
 
     return EventSourceResponse(gen())
 
@@ -122,21 +125,24 @@ def create_event(
 async def extract_plot(
     project_id: int,
     body: _ExtractRequest | None = None,
-    db: Session = Depends(get_db),
 ) -> EventSourceResponse:
     chapter_ids = body.chapter_ids if body else None
 
+    # SSE 期间逐章 AI 抽取,session 在 generator 内自己起,不占路由依赖链上的连接。
     async def gen():
-        try:
-            async for evt in analysis_service.extract_plot(db, project_id, chapter_ids):
-                yield {
-                    "event": evt["event"],
-                    "data": json.dumps(evt["data"], ensure_ascii=False),
-                }
-        except AINotConfiguredError as e:
-            yield {"event": "error", "data": json.dumps({"message": str(e)}, ensure_ascii=False)}
-        except AIError as e:
-            yield {"event": "error", "data": json.dumps({"message": str(e)}, ensure_ascii=False)}
+        from app.database import SessionLocal
+
+        with SessionLocal() as db:
+            try:
+                async for evt in analysis_service.extract_plot(db, project_id, chapter_ids):
+                    yield {
+                        "event": evt["event"],
+                        "data": json.dumps(evt["data"], ensure_ascii=False),
+                    }
+            except AINotConfiguredError as e:
+                yield {"event": "error", "data": json.dumps({"message": str(e)}, ensure_ascii=False)}
+            except AIError as e:
+                yield {"event": "error", "data": json.dumps({"message": str(e)}, ensure_ascii=False)}
 
     return EventSourceResponse(gen())
 

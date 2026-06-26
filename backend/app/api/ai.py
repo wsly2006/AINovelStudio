@@ -105,50 +105,92 @@ def _sse_from_stream(stream: AsyncGenerator[str, None]) -> AsyncGenerator[dict, 
     return gen()
 
 
+def _sse_with_owned_session(stream_factory) -> AsyncGenerator[dict, None]:
+    """SSE 路由专用:在生成器内部起独立 session,LLM 调用期间不占路由依赖链上的连接。
+
+    stream_factory(db) → AsyncGenerator[str, None] 由调用方按需组装上下文。
+    """
+
+    async def gen():
+        from app.database import SessionLocal
+
+        with SessionLocal() as db:
+            try:
+                async for delta in stream_factory(db):
+                    yield {
+                        "event": "delta",
+                        "data": json.dumps({"text": delta}, ensure_ascii=False),
+                    }
+                yield {"event": "done", "data": "{}"}
+            except AINotConfiguredError as e:
+                yield {
+                    "event": "error",
+                    "data": json.dumps({"message": str(e)}, ensure_ascii=False),
+                }
+            except AIError as e:
+                yield {
+                    "event": "error",
+                    "data": json.dumps({"message": str(e)}, ensure_ascii=False),
+                }
+            except ChapterNotFoundError:
+                yield {
+                    "event": "error",
+                    "data": json.dumps({"message": "章节不存在"}, ensure_ascii=False),
+                }
+
+    return gen()
+
+
 @router.post("/chapters/{chapter_id}/ai/generate")
 async def ai_generate(
-    chapter_id: int, body: GenerateBody, db: Session = Depends(get_db)
+    chapter_id: int, body: GenerateBody
 ) -> EventSourceResponse:
-    stream = chapter_ai_service.stream_generate(
-        db,
-        chapter_id,
-        target_word_count=body.target_word_count,
-        extra_instruction=body.extra_instruction,
-        character_ids=body.character_ids,
-        world_entity_ids=body.world_entity_ids,
-        item_ids=body.item_ids,
-    )
-    return EventSourceResponse(_sse_from_stream(stream))
+    def factory(db):
+        return chapter_ai_service.stream_generate(
+            db,
+            chapter_id,
+            target_word_count=body.target_word_count,
+            extra_instruction=body.extra_instruction,
+            character_ids=body.character_ids,
+            world_entity_ids=body.world_entity_ids,
+            item_ids=body.item_ids,
+        )
+
+    return EventSourceResponse(_sse_with_owned_session(factory))
 
 
 @router.post("/chapters/{chapter_id}/ai/continue")
 async def ai_continue(
-    chapter_id: int, body: ContinueBody, db: Session = Depends(get_db)
+    chapter_id: int, body: ContinueBody
 ) -> EventSourceResponse:
-    stream = chapter_ai_service.stream_continue(
-        db,
-        chapter_id,
-        cursor_text=body.cursor_text,
-        extra_instruction=body.extra_instruction,
-        character_ids=body.character_ids,
-        world_entity_ids=body.world_entity_ids,
-        item_ids=body.item_ids,
-    )
-    return EventSourceResponse(_sse_from_stream(stream))
+    def factory(db):
+        return chapter_ai_service.stream_continue(
+            db,
+            chapter_id,
+            cursor_text=body.cursor_text,
+            extra_instruction=body.extra_instruction,
+            character_ids=body.character_ids,
+            world_entity_ids=body.world_entity_ids,
+            item_ids=body.item_ids,
+        )
+
+    return EventSourceResponse(_sse_with_owned_session(factory))
 
 
 @router.post("/chapters/{chapter_id}/ai/rewrite")
 async def ai_rewrite(
-    chapter_id: int, body: RewriteBody, db: Session = Depends(get_db)
+    chapter_id: int, body: RewriteBody
 ) -> EventSourceResponse:
-    stream = chapter_ai_service.stream_rewrite(
-        db,
-        chapter_id,
-        selection=body.selection,
-        instruction=body.instruction,
-        character_ids=body.character_ids,
-    )
-    return EventSourceResponse(_sse_from_stream(stream))
+    def factory(db):
+        return chapter_ai_service.stream_rewrite(
+            db,
+            chapter_id,
+            selection=body.selection,
+            instruction=body.instruction,
+            character_ids=body.character_ids,
+        )
+
+    return EventSourceResponse(_sse_with_owned_session(factory))
 
 
 @router.post("/chapters/{chapter_id}/ai/preview-prompt")

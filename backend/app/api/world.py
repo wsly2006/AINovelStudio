@@ -53,21 +53,24 @@ def create_entity(
 async def extract_world(
     project_id: int,
     body: WorldEntityExtractRequest,
-    db: Session = Depends(get_db),
 ) -> EventSourceResponse:
+    # SSE 期间逐章 AI 抽取,session 在 generator 内自己起,不占路由依赖链上的连接。
     async def gen():
-        try:
-            async for evt in world_extract_service.extract_world_entities(
-                db, project_id, body.kinds, body.mode, body.chapter_ids
-            ):
-                yield {
-                    "event": evt["event"],
-                    "data": json.dumps(evt["data"], ensure_ascii=False),
-                }
-        except AINotConfiguredError as e:
-            yield {"event": "error", "data": json.dumps({"message": str(e)}, ensure_ascii=False)}
-        except AIError as e:
-            yield {"event": "error", "data": json.dumps({"message": str(e)}, ensure_ascii=False)}
+        from app.database import SessionLocal
+
+        with SessionLocal() as db:
+            try:
+                async for evt in world_extract_service.extract_world_entities(
+                    db, project_id, body.kinds, body.mode, body.chapter_ids
+                ):
+                    yield {
+                        "event": evt["event"],
+                        "data": json.dumps(evt["data"], ensure_ascii=False),
+                    }
+            except AINotConfiguredError as e:
+                yield {"event": "error", "data": json.dumps({"message": str(e)}, ensure_ascii=False)}
+            except AIError as e:
+                yield {"event": "error", "data": json.dumps({"message": str(e)}, ensure_ascii=False)}
 
     return EventSourceResponse(gen())
 

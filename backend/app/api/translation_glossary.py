@@ -94,30 +94,34 @@ def seed_entries(
 async def extract_glossary(
     project_id: int,
     body: GlossaryExtractRequest,
-    db: Session = Depends(get_db),
 ) -> EventSourceResponse:
+    # SSE 期间逐章扫 + AI 候选抽取可能跑几十秒,session 在 generator 内自己起,
+    # 不占路由依赖链上的连接。
     async def gen():
-        try:
-            async for evt in glossary_extract_service.extract_glossary(
-                db,
-                project_id,
-                target_lang=body.target_lang,
-                chapter_ids=body.chapter_ids,
-            ):
+        from app.database import SessionLocal
+
+        with SessionLocal() as db:
+            try:
+                async for evt in glossary_extract_service.extract_glossary(
+                    db,
+                    project_id,
+                    target_lang=body.target_lang,
+                    chapter_ids=body.chapter_ids,
+                ):
+                    yield {
+                        "event": evt["event"],
+                        "data": json.dumps(evt["data"], ensure_ascii=False),
+                    }
+            except AINotConfiguredError as e:
                 yield {
-                    "event": evt["event"],
-                    "data": json.dumps(evt["data"], ensure_ascii=False),
+                    "event": "error",
+                    "data": json.dumps({"message": str(e)}, ensure_ascii=False),
                 }
-        except AINotConfiguredError as e:
-            yield {
-                "event": "error",
-                "data": json.dumps({"message": str(e)}, ensure_ascii=False),
-            }
-        except AIError as e:
-            yield {
-                "event": "error",
-                "data": json.dumps({"message": str(e)}, ensure_ascii=False),
-            }
+            except AIError as e:
+                yield {
+                    "event": "error",
+                    "data": json.dumps({"message": str(e)}, ensure_ascii=False),
+                }
 
     return EventSourceResponse(gen())
 

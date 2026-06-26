@@ -136,42 +136,48 @@ def preview_prompt(
 
 
 def _sse_from_stream(
-    stream: AsyncGenerator[str, None],
+    stream_factory,
     *,
     conversation_id: int,
-    db: Session,
 ) -> AsyncGenerator[dict, None]:
-    """把文本增量包成 SSE 事件,流末尾返回 assistant 消息 id 给前端 join。"""
+    """把文本增量包成 SSE 事件,流末尾返回 assistant 消息 id 给前端 join。
+
+    stream_factory(db) → AsyncGenerator[str, None]:在生成器内部起独立 session,
+    LLM 调用期间不持有路由依赖链上的 session。
+    """
 
     async def gen():
-        try:
-            async for delta in stream:
-                yield {
-                    "event": "delta",
-                    "data": json.dumps({"text": delta}, ensure_ascii=False),
+        from app.database import SessionLocal
+
+        with SessionLocal() as db:
+            try:
+                async for delta in stream_factory(db):
+                    yield {
+                        "event": "delta",
+                        "data": json.dumps({"text": delta}, ensure_ascii=False),
+                    }
+                # 流式正常结束:取出最后一条 assistant 消息(刚刚 service 落库的)
+                messages = ai_assistant_service.list_messages(db, conversation_id)
+                last_assistant = next(
+                    (m for m in reversed(messages) if m.role == "assistant"), None
+                )
+                payload = {
+                    "message_id": last_assistant.id if last_assistant else None,
                 }
-            # 流式正常结束:取出最后一条 assistant 消息(刚刚 service 落库的)
-            messages = ai_assistant_service.list_messages(db, conversation_id)
-            last_assistant = next(
-                (m for m in reversed(messages) if m.role == "assistant"), None
-            )
-            payload = {
-                "message_id": last_assistant.id if last_assistant else None,
-            }
-            yield {
-                "event": "done",
-                "data": json.dumps(payload, ensure_ascii=False),
-            }
-        except AINotConfiguredError as e:
-            yield {
-                "event": "error",
-                "data": json.dumps({"message": str(e)}, ensure_ascii=False),
-            }
-        except AIError as e:
-            yield {
-                "event": "error",
-                "data": json.dumps({"message": str(e)}, ensure_ascii=False),
-            }
+                yield {
+                    "event": "done",
+                    "data": json.dumps(payload, ensure_ascii=False),
+                }
+            except AINotConfiguredError as e:
+                yield {
+                    "event": "error",
+                    "data": json.dumps({"message": str(e)}, ensure_ascii=False),
+                }
+            except AIError as e:
+                yield {
+                    "event": "error",
+                    "data": json.dumps({"message": str(e)}, ensure_ascii=False),
+                }
 
     return gen()
 
@@ -190,17 +196,19 @@ async def send_message(
             status_code=status.HTTP_404_NOT_FOUND, detail="对话不存在"
         ) from e
 
-    stream = ai_assistant_service.stream_reply(
-        db,
-        conversation_id,
-        user_content=body.content,
-        chapter_id=body.chapter_id,
-        selection_text=body.selection_text,
-        include_chapter_content=body.include_chapter_content,
-        character_ids=body.character_ids,
-        world_entity_ids=body.world_entity_ids,
-        item_ids=body.item_ids,
-    )
+    def factory(stream_db):
+        return ai_assistant_service.stream_reply(
+            stream_db,
+            conversation_id,
+            user_content=body.content,
+            chapter_id=body.chapter_id,
+            selection_text=body.selection_text,
+            include_chapter_content=body.include_chapter_content,
+            character_ids=body.character_ids,
+            world_entity_ids=body.world_entity_ids,
+            item_ids=body.item_ids,
+        )
+
     return EventSourceResponse(
-        _sse_from_stream(stream, conversation_id=conversation_id, db=db)
+        _sse_from_stream(factory, conversation_id=conversation_id)
     )
