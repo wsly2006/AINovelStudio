@@ -612,6 +612,7 @@ person | place | org | term | skill | item | other
 _TRANSLATE_SYSTEM = (
     "你是一名专业的中文-外语小说翻译。"
     "严格按提供的术语表保持名词一致,跨章不漂移。"
+    "严格遵循『文风指令』里的具体说明,与术语表同等优先级。"
     "保留原文段落结构,段落之间只用单个换行符。"
     "用目标语言自然行文,不直译成生硬中式英语。"
     "输出仅包含译文正文,不带 Markdown 代码块、注释或解释性文字。"
@@ -626,9 +627,12 @@ _TRANSLATE_USER = """目标语言:{{target_lang_label}}
 【术语对照表】(同一中文必须翻成对应译文,这是硬约束):
 {{glossary_block}}
 
+【文风指令】(本工程作者写的目标语文风偏好,与术语表同级硬约束):
+{{style_guide_block}}
+
 前序章节梗概:{{previous_summary}}
 
-现在请把【{{chapter_label}}】翻译为目标语言,严格遵守术语表。
+现在请把【{{chapter_label}}】翻译为目标语言,严格遵守术语表与文风指令。
 
 中文原文:
 ---
@@ -951,6 +955,7 @@ PROMPTS: tuple[PromptDef, ...] = (
             "project_info",
             "synopsis_block",
             "glossary_block",
+            "style_guide_block",
             "previous_summary",
             "chapter_label",
             "original_content",

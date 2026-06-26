@@ -94,6 +94,11 @@ def _build_messages(
     if extra_instruction and extra_instruction.strip():
         extra_block = f"额外要求:{extra_instruction.strip()}\n\n"
 
+    # 文风指令:作者写的目标语自然语言文风偏好,与术语表同级硬约束。
+    # 空时给兜底文案,避免 prompt 里出现「【文风指令】:」后面挂空字符串。
+    guide = (project.translation_style_guide or "").strip()
+    style_guide_block = guide or "(作者未指定特殊文风,按目标语自然文风行文)"
+
     return prompt_service.render(
         db,
         "chapter.translate",
@@ -102,6 +107,7 @@ def _build_messages(
             "project_info": _project_brief(project),
             "synopsis_block": synopsis_block,
             "glossary_block": _glossary_block(glossary_entries),
+            "style_guide_block": style_guide_block,
             "previous_summary": _previous_summary(
                 db, project.id, chapter.id
             ),

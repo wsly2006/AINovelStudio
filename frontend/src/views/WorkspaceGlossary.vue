@@ -3,11 +3,13 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Download, Lock, MagicStick, Aim } from '@element-plus/icons-vue'
+import { Plus, Download, Lock, MagicStick, Aim, Edit } from '@element-plus/icons-vue'
 import { useGlossaryStore } from '../stores/glossary'
 import GlossaryEntryDialog from '../components/GlossaryEntryDialog.vue'
 import GlossaryExtractDrawer from '../components/GlossaryExtractDrawer.vue'
 import ConsistencyReportDialog from '../components/ConsistencyReportDialog.vue'
+import TranslationStyleDialog from '../components/TranslationStyleDialog.vue'
+import { projectsApi } from '../api/projects'
 
 const route = useRoute()
 const { t } = useI18n()
@@ -29,6 +31,8 @@ const seedSubmitting = ref(false)
 
 const extractDrawerVisible = ref(false)
 const consistencyDialogVisible = ref(false)
+const styleDialogVisible = ref(false)
+const styleGuide = ref('')
 
 const TYPE_OPTIONS = ['person', 'place', 'org', 'term', 'skill', 'item', 'other']
 const LANG_OPTIONS = [
@@ -46,7 +50,22 @@ async function reload() {
 
 onMounted(async () => {
   await reload()
+  await loadStyleGuide()
 })
+
+async function loadStyleGuide() {
+  // 拉一次工程对象,只为初始化风格指令弹窗。失败兜底空串,不阻塞页面其他功能
+  try {
+    const p = await projectsApi.get(projectId.value)
+    styleGuide.value = p.translation_style_guide || ''
+  } catch {
+    styleGuide.value = ''
+  }
+}
+
+function onStyleSaved(next) {
+  styleGuide.value = next || ''
+}
 
 // 切换目标语言时重新拉(类型 + 搜索是前端过滤,不重拉)
 watch(filterLang, () => {
@@ -177,6 +196,9 @@ async function onExtractCompleted() {
         <span class="hint">{{ t('glossary.pageHint') }}</span>
       </div>
       <div class="actions">
+        <el-button :icon="Edit" @click="styleDialogVisible = true">
+          {{ t('glossary.styleButton') }}
+        </el-button>
         <el-button :icon="Aim" @click="consistencyDialogVisible = true">
           {{ t('glossary.consistencyButton') }}
         </el-button>
@@ -289,6 +311,13 @@ async function onExtractCompleted() {
       v-model="consistencyDialogVisible"
       :project-id="projectId"
       :default-target-lang="filterLang"
+    />
+
+    <TranslationStyleDialog
+      v-model="styleDialogVisible"
+      :project-id="projectId"
+      :initial-guide="styleGuide"
+      @saved="onStyleSaved"
     />
 
     <el-dialog

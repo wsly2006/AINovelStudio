@@ -228,3 +228,45 @@ def test_restore_translated_version_rejected(
     # chapter.content 仍然是中文
     chap = client.get(f"/api/chapters/{cid}").json()
     assert chap["content"] == "李慕白下山。"
+
+
+def test_translate_injects_style_guide(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """project.translation_style_guide 必须随 prompt 注入"""
+    pid, cid = _create_chapter_with_content(
+        client, "李慕白拱手作揖,师父点头。"
+    )
+    # 直接 PATCH 项目设风格指令
+    style = "Webnovel 风短句、对白多;师父译 Master;拱手礼直译为 bowed with cupped hands。"
+    r = client.patch(f"/api/projects/{pid}", json={"translation_style_guide": style})
+    assert r.status_code == 200, r.text
+
+    captured, fn = _capture_messages()
+    monkeypatch.setattr(ai_client_module, "stream_chat", fn)
+    _consume_sse(client, cid)
+
+    assert len(captured) == 1
+    msgs = captured[0]
+    blob = msgs[0]["content"] + "\n" + msgs[1]["content"]
+    assert "【文风指令】" in blob
+    assert "师父译 Master" in blob
+    assert "bowed with cupped hands" in blob
+
+
+def test_translate_uses_fallback_style_when_empty(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """没设风格指令 → prompt 里给的是兜底文案,不是空字符串"""
+    pid, cid = _create_chapter_with_content(client, "李慕白下山。")
+
+    captured, fn = _capture_messages()
+    monkeypatch.setattr(ai_client_module, "stream_chat", fn)
+    _consume_sse(client, cid)
+
+    msgs = captured[0]
+    user_content = msgs[1]["content"]
+    # 兜底必须包含关键字「作者未指定特殊文风」,不能是裸冒号后接空白
+    assert "作者未指定特殊文风" in user_content
+    # 校验文风指令块没塌成两行连体冒号(即没出现「【文风指令】(...):\n\n前序章节」)
+    assert "【文风指令】" in user_content

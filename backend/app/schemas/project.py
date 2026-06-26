@@ -28,6 +28,10 @@ class ProjectBase(BaseModel):
     categories: list[str] = Field(default_factory=list)
     target_platform_codes: list[str] = Field(default_factory=list)
 
+    # ── 翻译(P0-M5) ─────────────────────────────────────
+    # 翻译风格指令,翻译 prompt 直接注入,与术语表同级硬约束
+    translation_style_guide: str | None = Field(default=None, max_length=8000)
+
     @field_validator("name")
     @classmethod
     def _strip_name(cls, v: str) -> str:
@@ -78,6 +82,9 @@ class ProjectUpdate(BaseModel):
     keywords: list[str] | None = None
     categories: list[str] | None = None
     target_platform_codes: list[str] | None = None
+
+    # ── 翻译(P0-M5) ─────────────────────────────────────
+    translation_style_guide: str | None = Field(default=None, max_length=8000)
 
     @field_validator("name")
     @classmethod

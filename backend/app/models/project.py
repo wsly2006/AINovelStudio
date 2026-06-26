@@ -55,6 +55,11 @@ class Project(Base):
     # 计划上的平台 code 列表,导出弹窗按此默认勾选
     target_platform_codes: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
 
+    # ── 翻译(P0-M5) ─────────────────────────────────────
+    # 翻译风格指令:用自然语言写下目标语言的文风偏好,翻译时随 prompt 注入。
+    # 例:Webnovel 风短句、对白多、师父译 Master、修真术语保留拼音 + 首次出现加注释。
+    translation_style_guide: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), nullable=False
     )

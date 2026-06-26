@@ -796,6 +796,16 @@ export default {
     consistencyJump: '去本章',
     consistencyRerun: '重新检查',
     consistencyFailed: '一致性检查失败',
+    styleButton: '风格指令',
+    styleDialogTitle: '翻译风格指令',
+    styleDialogHint:
+      '用自然语言写下目标语的文风偏好,翻译时会随术语表一起注入 prompt。例:Webnovel 短句、对白多、师父译 Master、修真术语保留拼音。',
+    stylePlaceholder:
+      '例:\n• Webnovel 短句风,平均句长偏短\n• 对话比例至少 1/3\n• 师父译 Master,师兄/师姐译 Senior Brother/Sister\n• 修真术语保留拼音(qi、jindan)首次加注释\n• 章节结尾保持悬念',
+    stylePresetsLabel: '快速插入',
+    stylePresetsHint: '点击片段会追加到文本框末尾,可继续手改。',
+    styleSaved: '已保存风格指令',
+    styleSaveFailed: '保存风格指令失败',
   },
 
   ladders: {
