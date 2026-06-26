@@ -7,6 +7,7 @@
 - 走 ai_client.stream_chat 流式输出,逐 token 推 SSE delta
 """
 
+import asyncio
 from collections.abc import AsyncGenerator
 
 from sqlalchemy import select
@@ -219,4 +220,41 @@ async def translate_and_persist(
 __all__ = [
     "LANG_LABELS",
     "translate_and_persist",
+    "translate_chapter_blocking",
 ]
+
+
+def translate_chapter_blocking(
+    db: Session,
+    chapter_id: int,
+    target_lang: str,
+    *,
+    extra_instruction: str | None = None,
+) -> dict:
+    """同步阻塞调用:跑完整 translate_and_persist 流,丢弃 delta 事件,
+    返回 done 事件的 data。MCP 工具使用,HTTP SSE 路由仍走原 generator。
+
+    asyncio.run 每次新建 event loop,MCP 工具是顶层同步调用没有上层 loop,
+    所以安全。若调用方已经在 loop 里,这里会抛 RuntimeError —— 那时改走
+    async API。
+    """
+
+    async def _run() -> dict:
+        last_done: dict | None = None
+        async for evt in translate_and_persist(
+            db,
+            chapter_id,
+            target_lang,
+            extra_instruction=extra_instruction,
+        ):
+            if evt["event"] == "error":
+                raise RuntimeError(
+                    evt["data"].get("message", "translation failed")
+                )
+            if evt["event"] == "done":
+                last_done = evt["data"]
+        if last_done is None:
+            raise RuntimeError("translation stream ended without done event")
+        return last_done
+
+    return asyncio.run(_run())

@@ -23,6 +23,14 @@ from app.services.plot_service import PlotEventNotFoundError
 from app.services.project_service import ProjectNotFoundError
 from app.services.relation_service import RelationNotFoundError
 from app.services.task_service import TaskNotFoundError
+from app.services.translation_consistency_service import (
+    ProjectNotFoundForConsistencyError,
+)
+from app.services.translation_glossary_service import (
+    GlossaryConflictError,
+    GlossaryNotFoundError,
+    ProjectNotFoundForGlossaryError,
+)
 from app.services.world_entity_service import (
     ProjectNotFoundForWorldError,
     WorldEntityNotFoundError,
@@ -82,6 +90,22 @@ def friendly_errors(fn: F) -> F:
         except ChapterVersionNotFoundError as e:
             raise ValueError(
                 f"章节版本 #{e.args[0]} 不存在。先调用 list_chapter_versions 确认 id。"
+            ) from e
+        except ProjectNotFoundForGlossaryError as e:
+            raise ValueError(
+                f"工程 #{e.args[0]} 不存在。先调用 list_projects 确认可用的工程 id。"
+            ) from e
+        except GlossaryNotFoundError as e:
+            raise ValueError(
+                f"术语 #{e.args[0]} 不存在。先调用 list_glossary 确认 id。"
+            ) from e
+        except GlossaryConflictError as e:
+            raise ValueError(
+                f"术语冲突:{e}。同一 (project_id, source, target_lang) 只能有一条。"
+            ) from e
+        except ProjectNotFoundForConsistencyError as e:
+            raise ValueError(
+                f"工程 #{e.args[0]} 不存在。先调用 list_projects 确认可用的工程 id。"
             ) from e
 
     return wrapper  # type: ignore[return-value]

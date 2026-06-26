@@ -30,6 +30,7 @@ from app.ai.tools import (  # noqa: F401  触发 @tool 注册
     projects,
     relations,
     tasks,
+    translation,
     versions,
     world,
     writing,
