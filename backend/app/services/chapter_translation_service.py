@@ -235,9 +235,20 @@ def translate_chapter_blocking(
     返回 done 事件的 data。MCP 工具使用,HTTP SSE 路由仍走原 generator。
 
     asyncio.run 每次新建 event loop,MCP 工具是顶层同步调用没有上层 loop,
-    所以安全。若调用方已经在 loop 里,这里会抛 RuntimeError —— 那时改走
-    async API。
+    所以安全。这里显式守护一道:若当前线程已有运行中的 event loop
+    (将来某天 MCP 跑成 HTTP transport 或嵌进 FastAPI 进程),立刻给出
+    清晰错误而不是让 asyncio.run 的内部 RuntimeError 把根因埋掉。
     """
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        # 没有运行中的 loop —— 这是预期路径(MCP stdio 模式)
+        pass
+    else:
+        raise RuntimeError(
+            "translate_chapter_blocking 不能在运行中的 event loop 里调用。"
+            "若 MCP 已切到 HTTP transport,改走 async translate_and_persist。"
+        )
 
     async def _run() -> dict:
         last_done: dict | None = None
