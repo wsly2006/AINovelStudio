@@ -37,6 +37,9 @@ class ChapterStyleCheck(Base):
 
     # 命中段落列表,每条:{kind, quote, why, suggestion}
     issues: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    # 客观统计信号(本地计算,不依赖 LLM):句长方差 / 词汇丰富度 / 标点分布 ...
+    # 给作者**知情参考**,不做阈值闭环
+    signals: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     # 整体观感(可选,一两句话总结)
     summary: Mapped[str] = mapped_column(Text, nullable=False, default="")
 

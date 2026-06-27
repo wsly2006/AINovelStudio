@@ -50,6 +50,10 @@ def test_style_check_creates_record(
     assert "星海" in data["issues"][0]["quote"]
     assert "AI 味" in data["summary"]
     assert data["word_count"] > 0
+    # P4 新增:每次检查都同步落客观信号
+    assert "signals" in data
+    assert data["signals"]["char_count"] > 0
+    assert data["signals"]["sentence"]["count"] > 0
 
     lst = client.get(f"/api/chapters/{cid}/style-checks").json()
     assert len(lst) == 1

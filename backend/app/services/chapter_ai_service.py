@@ -13,11 +13,36 @@ from app.models.item import Item
 from app.models.ladder import Ladder
 from app.models.plot_event import PlotEvent
 from app.models.world_entity import WorldEntity
-from app.services import plot_thread_service, state_event_service, task_service
+from app.services import (
+    author_voice_service,
+    plot_thread_service,
+    state_event_service,
+    task_service,
+)
 from app.services.chapter_service import ChapterNotFoundError
 
 # 反向注入时,最近事件取多少个(按章节顺序倒数)
 RECENT_EVENTS_LIMIT = 12
+
+
+def _inject_voice_profile(
+    db: Session, project_id: int, messages: list[dict]
+) -> list[dict]:
+    """把 voice profile 片段追加到 system message 末尾。
+
+    选择追加而非替换:模板已生成的 system 指令仍是主体,voice 只是"风格补丁";
+    位置放最后,LLM 对临近 token 注意力更高,语癖更易被采纳。
+    """
+    fragment = author_voice_service.build_prompt_fragment(db, project_id)
+    if not fragment or not messages:
+        return messages
+    # messages[0] 不一定是 system(rewrite 模板首条就是 user);
+    # 找第一条 system,没有就插一条
+    for msg in messages:
+        if msg.get("role") == "system":
+            msg["content"] = f"{msg.get('content', '').rstrip()}\n\n{fragment}"
+            return messages
+    return [{"role": "system", "content": fragment}, *messages]
 
 
 def _build_snapshots_for_prompt(
@@ -170,7 +195,7 @@ def _assemble_generate_messages(
         db, chapter.project_id, [c.id for c in characters]
     )
     threads = plot_thread_service.list_active_threads_for_prompt(db, chapter.project_id)
-    return prompts.build_generate_messages(
+    messages = prompts.build_generate_messages(
         chapter.project,
         chapter,
         siblings,
@@ -185,6 +210,7 @@ def _assemble_generate_messages(
         plot_threads=threads,
         db=db,
     )
+    return _inject_voice_profile(db, chapter.project_id, messages)
 
 
 def _assemble_continue_messages(
@@ -207,7 +233,7 @@ def _assemble_continue_messages(
         db, chapter.project_id, [c.id for c in characters]
     )
     threads = plot_thread_service.list_active_threads_for_prompt(db, chapter.project_id)
-    return prompts.build_continue_messages(
+    messages = prompts.build_continue_messages(
         chapter.project,
         chapter,
         siblings,
@@ -222,6 +248,7 @@ def _assemble_continue_messages(
         plot_threads=threads,
         db=db,
     )
+    return _inject_voice_profile(db, chapter.project_id, messages)
 
 
 def _assemble_rewrite_messages(
@@ -237,7 +264,7 @@ def _assemble_rewrite_messages(
         raise ChapterNotFoundError(chapter_id)
     characters = _load_characters(db, chapter.project_id, character_ids)
     threads = plot_thread_service.list_active_threads_for_prompt(db, chapter.project_id)
-    return prompts.build_rewrite_messages(
+    messages = prompts.build_rewrite_messages(
         selection=selection,
         instruction=instruction,
         project=chapter.project,
@@ -245,6 +272,7 @@ def _assemble_rewrite_messages(
         plot_threads=threads,
         db=db,
     )
+    return _inject_voice_profile(db, chapter.project_id, messages)
 
 
 async def stream_generate(

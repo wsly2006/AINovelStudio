@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
-import { ArrowLeft, Setting, Download, ArrowDown, Sunny, Moon, ChatLineRound, DataLine, Tools, Edit } from '@element-plus/icons-vue'
+import { ArrowLeft, Setting, Download, ArrowDown, Sunny, Moon, ChatLineRound, DataLine, Tools, Edit, Microphone } from '@element-plus/icons-vue'
 import { useWorkspaceStore } from '../stores/workspace'
 import { useCharactersStore } from '../stores/characters'
 import { useWorldStore } from '../stores/world'
@@ -16,6 +16,7 @@ import AIConfigDialog from '../components/AIConfigDialog.vue'
 import PromptManagerDialog from '../components/PromptManagerDialog.vue'
 import ProjectEditDialog from '../components/ProjectEditDialog.vue'
 import ExportDialog from '../components/ExportDialog.vue'
+import VoiceProfileDialog from '../components/VoiceProfileDialog.vue'
 import WorkspaceLeftNav from '../components/WorkspaceLeftNav.vue'
 
 const props = defineProps({ id: { type: String, required: true } })
@@ -35,6 +36,7 @@ const aiConfigVisible = ref(false)
 const promptManagerVisible = ref(false)
 const projectEditVisible = ref(false)
 const exportDialogVisible = ref(false)
+const voiceProfileVisible = ref(false)
 
 // 总纲提醒小横幅:工程没填 synopsis 时露一次,用户点过「不再提示」就 localStorage 标记
 const synopsisDismissed = ref(false)
@@ -129,10 +131,11 @@ function onGoPublish() {
   router.push({ name: 'workspace-publish', params: { id: String(projectId.value) } })
 }
 
-// 系统设置下拉菜单:把模型/提示词/用量统计三个入口聚合,顶栏更干净
+// 系统设置下拉菜单:把模型/提示词/用量统计/作者声音四个入口聚合,顶栏更干净
 function onSettings(cmd) {
   if (cmd === 'ai') aiConfigVisible.value = true
   else if (cmd === 'prompts') promptManagerVisible.value = true
+  else if (cmd === 'voice') voiceProfileVisible.value = true
   else if (cmd === 'stats') router.push('/stats/tokens')
 }
 </script>
@@ -167,6 +170,7 @@ function onSettings(cmd) {
           <el-dropdown-menu>
             <el-dropdown-item command="ai" :icon="Setting">模型设置</el-dropdown-item>
             <el-dropdown-item command="prompts" :icon="ChatLineRound">提示词管理</el-dropdown-item>
+            <el-dropdown-item command="voice" :icon="Microphone">作者声音</el-dropdown-item>
             <el-dropdown-item command="stats" :icon="DataLine" divided>用量统计</el-dropdown-item>
           </el-dropdown-menu>
         </template>
@@ -225,6 +229,7 @@ function onSettings(cmd) {
       :project="store.project"
       @go-publish="onGoPublish"
     />
+    <VoiceProfileDialog v-model="voiceProfileVisible" :project-id="projectId" />
   </div>
 </template>
 

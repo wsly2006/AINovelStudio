@@ -1,6 +1,7 @@
 from datetime import datetime
+from typing import Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ChapterStyleIssue(BaseModel):
@@ -18,6 +19,8 @@ class ChapterStyleCheckItem(BaseModel):
     id: int
     chapter_id: int
     issues: list[ChapterStyleIssue]
+    # 客观统计信号 — 旧记录可能没有,默认空 dict
+    signals: dict[str, Any] = Field(default_factory=dict)
     summary: str
     model: str | None
     word_count: int

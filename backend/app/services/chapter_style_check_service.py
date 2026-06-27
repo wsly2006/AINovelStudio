@@ -18,6 +18,7 @@ from app.ai.runtime import resolve as resolve_ai_runtime
 from app.models.chapter import Chapter
 from app.models.chapter_style_check import ChapterStyleCheck
 from app.schemas.chapter_style_check import ChapterStyleCheckItem
+from app.services import style_signals
 from app.services.chapter_service import ChapterNotFoundError
 
 _VALID_KINDS = {"套语", "排比堆砌", "辞藻冗余", "模板结构", "对话同质", "视角抽离", "其他"}
@@ -95,9 +96,12 @@ async def style_check_chapter(db: Session, chapter_id: int) -> ChapterStyleCheck
     summary = str(data.get("summary") or "").strip()
 
     cfg = resolve_ai_runtime(db)
+    # 客观统计信号:本地直接算,跟 LLM 输出并存,作为客观参考
+    signals = style_signals.compute_signals(chapter.content or "")
     row = ChapterStyleCheck(
         chapter_id=chapter.id,
         issues=issues,
+        signals=signals,
         summary=summary,
         model=cfg.model,
         word_count=chapter.word_count or 0,

@@ -7,6 +7,7 @@ from app.api import (
     ai,
     ai_assistant,
     analysis,
+    author_voice,
     chapter_scores,
     chapter_style_checks,
     chapter_translation,
@@ -114,3 +115,4 @@ app.include_router(translation_glossary.project_router)
 app.include_router(translation_glossary.entry_router)
 app.include_router(chapter_translation.router)
 app.include_router(translation_consistency.router)
+app.include_router(author_voice.router)

@@ -27,6 +27,18 @@ const activeIssue = computed(() => {
   return s.issues[Math.min(activeIssueIdx.value, s.issues.length - 1)] || null
 })
 
+const signals = computed(() => selected.value?.signals || {})
+const hasSignals = computed(() => {
+  const s = signals.value
+  // 旧记录没 signals 字段,或字段空对象时不显示
+  return s && typeof s === 'object' && (s.char_count ?? 0) > 0
+})
+
+function fmtRatio(v) {
+  if (v == null) return '—'
+  return `${(v * 100).toFixed(1)}%`
+}
+
 async function loadList() {
   if (!props.chapterId) return
   loading.value = true
@@ -179,6 +191,56 @@ function onJumpRewrite(issue) {
         </div>
 
         <p v-if="selected.summary" class="summary">{{ selected.summary }}</p>
+
+        <!-- 客观风格信号(本地统计,不依赖 LLM)。默认折叠,作为知情参考 -->
+        <details v-if="hasSignals" class="signals-panel">
+          <summary class="signals-summary">
+            <span class="signals-title">客观风格信号</span>
+            <span class="signals-hint">本地统计,作者知情参考</span>
+          </summary>
+          <div class="signals-grid">
+            <div class="sig-cell">
+              <div class="sig-label">句长方差</div>
+              <div class="sig-value">{{ signals.sentence?.stdev_len ?? '—' }}</div>
+              <div class="sig-meta">
+                均 {{ signals.sentence?.mean_len ?? '—' }} · p10/50/90
+                {{ signals.sentence?.p10 ?? '—' }}/{{ signals.sentence?.p50 ?? '—' }}/{{ signals.sentence?.p90 ?? '—' }}
+              </div>
+            </div>
+            <div class="sig-cell">
+              <div class="sig-label">段长方差</div>
+              <div class="sig-value">{{ signals.paragraph?.stdev_len ?? '—' }}</div>
+              <div class="sig-meta">
+                {{ signals.paragraph?.count ?? 0 }} 段 · 均
+                {{ signals.paragraph?.mean_len ?? '—' }} 字
+              </div>
+            </div>
+            <div class="sig-cell">
+              <div class="sig-label">词汇丰富度</div>
+              <div class="sig-value">{{ fmtRatio(signals.vocab_richness) }}</div>
+              <div class="sig-meta">去重字符 / 非空白字符</div>
+            </div>
+            <div class="sig-cell">
+              <div class="sig-label">对白占比</div>
+              <div class="sig-value">{{ fmtRatio(signals.dialogue_ratio) }}</div>
+              <div class="sig-meta">引号开头段 / 总段数</div>
+            </div>
+            <div class="sig-cell">
+              <div class="sig-label">标点密度</div>
+              <div class="sig-value">{{ fmtRatio(signals.punctuation_ratio) }}</div>
+              <div class="sig-meta">标点字符 / 总字符</div>
+            </div>
+            <div class="sig-cell">
+              <div class="sig-label">总字符</div>
+              <div class="sig-value">{{ signals.char_count ?? 0 }}</div>
+              <div class="sig-meta">{{ signals.sentence?.count ?? 0 }} 句</div>
+            </div>
+          </div>
+          <p class="signals-note">
+            这些是统计参考,不是"AI 痕迹分"。句长方差太低、词汇丰富度太低,
+            往往意味着行文偏机械;具体改不改、怎么改,作者自己定。
+          </p>
+        </details>
 
         <div v-if="selected.issues.length > 0" class="issue-layout">
           <!-- 左:命中列表 -->
@@ -463,5 +525,81 @@ function onJumpRewrite(issue) {
 }
 .hist-del:hover {
   color: #f53f3f !important;
+}
+
+/* 客观信号面板:默认折叠的 details/summary */
+.signals-panel {
+  margin: 0 0 16px;
+  border: 1px solid #e5e6eb;
+  border-radius: 8px;
+  background: #fafbfc;
+  padding: 0;
+}
+.signals-summary {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 14px;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+.signals-summary::-webkit-details-marker {
+  display: none;
+}
+.signals-summary::before {
+  content: '▸';
+  font-size: 11px;
+  color: #86909c;
+  transition: transform 0.15s;
+  margin-right: 4px;
+}
+.signals-panel[open] .signals-summary::before {
+  transform: rotate(90deg);
+}
+.signals-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1f2329;
+}
+.signals-hint {
+  font-size: 11px;
+  color: #86909c;
+}
+.signals-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+  padding: 4px 14px 12px;
+}
+.sig-cell {
+  background: #fff;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid #f2f3f5;
+}
+.sig-label {
+  font-size: 11px;
+  color: #86909c;
+  margin-bottom: 2px;
+}
+.sig-value {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2329;
+  font-variant-numeric: tabular-nums;
+}
+.sig-meta {
+  font-size: 11px;
+  color: #c9cdd4;
+  margin-top: 2px;
+  font-variant-numeric: tabular-nums;
+}
+.signals-note {
+  margin: 0;
+  padding: 0 14px 12px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: #86909c;
 }
 </style>

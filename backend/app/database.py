@@ -47,6 +47,7 @@ def _import_all_models() -> None:
     """
     from app.models import ai_call_log as _ai_call_log  # noqa: F401
     from app.models import ai_conversation as _ai_conversation  # noqa: F401
+    from app.models import author_voice_profile as _author_voice_profile  # noqa: F401
     from app.models import chapter as _chapter  # noqa: F401
     from app.models import chapter_score as _chapter_score  # noqa: F401
     from app.models import chapter_style_check as _chapter_style_check  # noqa: F401
@@ -106,6 +107,8 @@ _NEW_COLUMNS: list[tuple[str, str, str]] = [
     ("ai_settings", "review_api_key", "TEXT"),
     ("ai_settings", "review_temperature", "FLOAT"),
     ("ai_settings", "review_max_tokens", "INTEGER"),
+    # P4 风格信号(旧表升级时补列)
+    ("chapter_style_checks", "signals", "JSON NOT NULL DEFAULT '{}'"),
 ]
 
 
