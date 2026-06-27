@@ -67,5 +67,11 @@ build_mcp.md
 # --- 本地 TODO / 工作项规划(不入库) ---
 todo/
 
-# --- 本地设计文档 / 调研笔记(不入库) ---
-docs/
+# --- 本地设计文档 / 调研笔记 ---
+# 默认全部忽略 docs/ 下的文件(本地草稿不入库),
+# 只把"已落地功能的产品设计说明"以白名单方式入库。
+# 注意:不能整体 `docs/` 后再 `!docs/foo.md` —— 目录被忽略后 git 不会递归评估例外。
+docs/*
+!docs/translation-pipeline.md
+!docs/P1-export-and-publishing-metadata.md
+!docs/author-voice-and-style-signals.md
