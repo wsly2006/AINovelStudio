@@ -11,10 +11,10 @@ export default defineConfig({
     Components({ resolvers: [ElementPlusResolver()] }),
   ],
   server: {
-    port: 5173,
+    port: Number(process.env.FRONTEND_PORT) || 5173,
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:8765',
+        target: `http://127.0.0.1:${process.env.BACKEND_PORT || 8765}`,
         changeOrigin: true,
       },
     },

@@ -1,10 +1,14 @@
 #!/usr/bin/env bash
-# 一键启动：后端 + 前端，Ctrl+C 一并退出。
-# 适用于 Git Bash / WSL / macOS / Linux。
+# 一键启动：后端 + 前端跑在同一个终端里，Ctrl+C 一并退出。
+# 用法：./scripts/run.sh [backend_port] [frontend_port]
+#   默认 backend=8765, frontend=5173
 set -e
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
+
+BACKEND_PORT="${1:-8765}"
+FRONTEND_PORT="${2:-5173}"
 
 need() { command -v "$1" >/dev/null 2>&1 || { echo "Missing command: $1"; exit 1; }; }
 need uv
@@ -19,10 +23,12 @@ if [ ! -d "frontend/node_modules" ]; then
   (cd frontend && npm install)
 fi
 
-echo "[start] backend  -> http://127.0.0.1:8765"
-echo "[start] frontend -> http://localhost:5173"
+export BACKEND_PORT FRONTEND_PORT
 
-( cd backend && uv run uvicorn app.main:app --host 127.0.0.1 --port 8765 ) &
+echo "[start] backend  -> http://127.0.0.1:${BACKEND_PORT}"
+echo "[start] frontend -> http://localhost:${FRONTEND_PORT}"
+
+( cd backend && uv run uvicorn app.main:app --host 127.0.0.1 --port "$BACKEND_PORT" ) &
 BACKEND_PID=$!
 
 ( cd frontend && npm run dev ) &

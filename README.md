@@ -86,10 +86,12 @@ cp backend/.env.example backend/.env
 
 ```bash
 # Mac / Linux / Git Bash / WSL
-./scripts/run.sh
+./scripts/run.sh                  # 默认 backend=8765, frontend=5173
+./scripts/run.sh 9000 5200        # 自定义端口:第 1 参后端,第 2 参前端
 
 # Windows 原生 cmd
 scripts\run.bat
+scripts\run.bat 9000 5200
 ```
 
 或双窗口(后端 / 前端各起一个终端窗口,关掉窗口即停):
