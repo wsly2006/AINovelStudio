@@ -18,6 +18,7 @@ import ProjectEditDialog from '../components/ProjectEditDialog.vue'
 import ExportDialog from '../components/ExportDialog.vue'
 import VoiceProfileDialog from '../components/VoiceProfileDialog.vue'
 import WorkspaceLeftNav from '../components/WorkspaceLeftNav.vue'
+import LocaleSwitcher from '../components/LocaleSwitcher.vue'
 
 const props = defineProps({ id: { type: String, required: true } })
 const router = useRouter()
@@ -198,6 +199,8 @@ function onSettings(cmd) {
         </el-icon>
         <span>{{ isHC ? t('theme.high') : t('theme.default') }}</span>
       </button>
+
+      <LocaleSwitcher />
     </header>
 
     <div v-if="showSynopsisBanner" class="synopsis-banner">

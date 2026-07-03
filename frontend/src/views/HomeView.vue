@@ -7,6 +7,7 @@ import { Plus, Upload, EditPen, DataLine, MagicStick } from '@element-plus/icons
 import { useProjectsStore } from '../stores/projects'
 import ProjectCard from '../components/ProjectCard.vue'
 import ProjectCreateDialog from '../components/ProjectCreateDialog.vue'
+import LocaleSwitcher from '../components/LocaleSwitcher.vue'
 import { streamProgressSSE } from '../api/sse'
 import { projectsApi } from '../api/projects'
 import { outlineApi } from '../api/outline'
@@ -302,6 +303,7 @@ async function onFilePicked(e) {
       <el-button text :icon="DataLine" @click="router.push('/stats/tokens')">
         用量统计
       </el-button>
+      <LocaleSwitcher />
     </div>
     <section class="hero">
       <h1 class="hero-title">{{ t('app.name') }}</h1>
