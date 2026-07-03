@@ -82,12 +82,24 @@ cp backend/.env.example backend/.env
 
 ### 3. 启动
 
+单窗口(推荐,Ctrl+C 一并退出):
+
 ```bash
-# Windows (Git Bash / WSL):
+# Mac / Linux / Git Bash / WSL
+./scripts/run.sh
+
+# Windows 原生 cmd
+scripts\run.bat
+```
+
+或双窗口(后端 / 前端各起一个终端窗口,关掉窗口即停):
+
+```bash
+# Mac / Linux / Git Bash / WSL
 ./scripts/start.sh
 
-# Mac / Linux:
-./scripts/start.sh
+# Windows 原生 cmd
+scripts\start.bat
 ```
 
 或分别启动:
