@@ -41,7 +41,9 @@
   (默认只读;写操作需 env 开关显式启用,写章节正文前自动建版本快照可回滚)
 - **数据自由**:JSON 完整备份(含人物 / 关系 / 情节 / 世界观 / 阶梯 / 状态事件 / 任务)
   + Markdown 阅读导出 / JSON 导入还原
-- **多语言预埋**:文案集中在 i18n 包,目前提供中文,加新语种只需复制翻译
+- **多语言切换**:右上角一键切换中文 / English,选择存本地 localStorage;
+  Element Plus 内置文案(弹窗、分页、日期)跟随切换。目前只有中文有完整翻译,
+  英文为占位(缺失键自动回退中文),加新语种或补翻译见下文「多语言与国际化」
 
 ## 技术栈
 
@@ -272,6 +274,51 @@ npm run build    # 生产构建
 ### 数据库迁移
 
 首版用 `Base.metadata.create_all()` 启动建表,Schema 变化会自动建新表但**不会**改老表。如果你改了已有列,删 `data/app.db` 重新启动即可(开发期可接受;生产部署建议接 Alembic)。
+
+### 多语言与国际化
+
+前端用 [vue-i18n](https://vue-i18n.intlify.dev/) 管文案,右上角内置语言切换器,当前登记的语种在 [`frontend/src/i18n/index.js`](frontend/src/i18n/index.js) 的 `SUPPORTED_LOCALES`。
+
+**目录:**
+
+```
+frontend/src/i18n/
+├── index.js              # vue-i18n 实例 + setLocale() + localStorage 持久化
+└── locales/
+    ├── zh-CN.js          # 中文,完整翻译
+    └── en-US.js          # 英文,当前为占位空对象,缺失键自动回退中文
+```
+
+**翻译英文(或补齐已有语种):**
+
+编辑对应 `locales/xx-YY.js`,把 `zh-CN.js` 里的键复制过来逐项翻译即可。留空的键会自动 fallback 到 `zh-CN`,所以可以增量翻译、不必一次搞完。
+
+**新增语种(比如日语 `ja-JP`):**
+
+1. `cp frontend/src/i18n/locales/en-US.js frontend/src/i18n/locales/ja-JP.js` 后逐项翻译
+2. 在 [`frontend/src/i18n/index.js`](frontend/src/i18n/index.js) `import` 进来,加进 `messages` 和 `SUPPORTED_LOCALES`
+3. 在 [`frontend/src/components/LocaleSwitcher.vue`](frontend/src/components/LocaleSwitcher.vue) 的 `LABELS` 加一条 `'ja-JP': '日本語'`
+4. 如果新语种在 Element Plus 也有对应 locale,在 [`frontend/src/App.vue`](frontend/src/App.vue) 里补一个映射(否则 Element Plus 弹窗/分页文案不会跟着切)
+
+**语言选择规则:**
+
+- 首次访问:优先按 `navigator.language`,`en*` 走英文,其它走 `zh-CN`
+- 之后:用户在右上角切换会存入 `localStorage['ai-novel-locale']`,下次直接读
+
+**页面组件里用文案:**
+
+```vue
+<script setup>
+import { useI18n } from 'vue-i18n'
+const { t } = useI18n()
+</script>
+
+<template>
+  <button>{{ t('workspace.backHome') }}</button>
+</template>
+```
+
+新增文案:优先在 `zh-CN.js` 已有分组下加键,再到其它语种同步(可留空回退)。
 
 ## 数据安全
 
