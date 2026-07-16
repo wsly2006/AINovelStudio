@@ -254,6 +254,14 @@ def _extra_instruction_block(extra: str | None) -> str:
     return f"\n\n额外要求:\n{extra.strip()}" if extra else ""
 
 
+def _chapter_summary_block(chapter: Chapter) -> str:
+    """本章梗概块。写正文 / 续写时都要严格遵循这份大纲。"""
+    text = (chapter.summary or "").strip()
+    if not text:
+        return ""
+    return f"本章大纲梗概(严格遵循,本章应完整覆盖以下情节):\n{text}"
+
+
 def build_generate_messages(
     project: Project,
     chapter: Chapter,
@@ -276,6 +284,7 @@ def build_generate_messages(
         "synopsis_block": _synopsis_context(project),
         "threads_block": _threads_context(plot_threads or []),
         "previous_summary": _previous_chapters_context(previous, chapter.id),
+        "chapter_summary_block": _chapter_summary_block(chapter),
         "characters_block": _characters_context(characters or [], snapshots_by_id),
         "world_block": _world_context(world_entities or []),
         "items_block": _items_context(items or []),
@@ -311,6 +320,7 @@ def build_continue_messages(
         "synopsis_block": _synopsis_context(project),
         "threads_block": _threads_context(plot_threads or []),
         "previous_summary": _previous_chapters_context(previous, chapter.id),
+        "chapter_summary_block": _chapter_summary_block(chapter),
         "characters_block": _characters_context(characters or [], snapshots_by_id),
         "world_block": _world_context(world_entities or []),
         "items_block": _items_context(items or []),

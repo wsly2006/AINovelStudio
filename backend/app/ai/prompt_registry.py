@@ -43,6 +43,8 @@ _GEN_USER = """工程信息:{{project_info}}
 前序章节梗概:
 {{previous_summary}}
 
+{{chapter_summary_block}}
+
 {{characters_block}}
 
 {{world_block}}
@@ -57,7 +59,7 @@ _GEN_USER = """工程信息:{{project_info}}
 
 现在请创作{{chapter_label}}。
 目标字数:约 {{target_word_count}} 字。
-请承接上一章结尾,自然推进情节,贴合总纲走向、推动主线进展。{{extra_instruction_block}}"""
+请严格按「本章大纲梗概」推进本章情节,把梗概里列出的事件、动机、冲突全部落到正文;承接上一章结尾,贴合总纲走向、推动主线进展。{{extra_instruction_block}}"""
 
 # ============ 2. 续写 ============
 
@@ -70,6 +72,8 @@ _CONT_USER = """工程信息:{{project_info}}
 前序章节梗概:
 {{previous_summary}}
 
+{{chapter_summary_block}}
+
 {{characters_block}}
 
 {{world_block}}
@@ -81,6 +85,7 @@ _CONT_USER = """工程信息:{{project_info}}
 {{tasks_block}}
 
 当前正在写{{chapter_label}},已写到下面的位置,请从此处自然续写若干段。
+续写要贴合「本章大纲梗概」剩余尚未展开的部分,不要偏离本章设定的情节走向。
 
 已写内容:
 ---
@@ -767,7 +772,8 @@ PROMPTS: tuple[PromptDef, ...] = (
         default_user=_GEN_USER,
         placeholders=(
             "project_info", "synopsis_block", "threads_block",
-            "previous_summary", "characters_block", "world_block",
+            "previous_summary", "chapter_summary_block",
+            "characters_block", "world_block",
             "items_block", "events_block", "tasks_block", "beats_block",
             "chapter_label", "target_word_count", "extra_instruction_block",
         ),
@@ -781,7 +787,8 @@ PROMPTS: tuple[PromptDef, ...] = (
         default_user=_CONT_USER,
         placeholders=(
             "project_info", "synopsis_block", "threads_block",
-            "previous_summary", "characters_block", "world_block",
+            "previous_summary", "chapter_summary_block",
+            "characters_block", "world_block",
             "items_block", "events_block", "tasks_block", "chapter_label",
             "cursor_text", "extra_instruction_block",
         ),
