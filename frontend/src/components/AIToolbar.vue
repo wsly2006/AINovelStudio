@@ -1,13 +1,13 @@
 <script setup>
 import { onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { MagicStick, Edit, EditPen, Document, Connection, StarFilled, View, Tickets, ChatLineRound, VideoPlay, Aim, Promotion } from '@element-plus/icons-vue'
+import { MagicStick, Edit, EditPen, Document, Connection, StarFilled, View, Tickets, ChatLineRound, VideoPlay, Aim, Promotion, Notebook } from '@element-plus/icons-vue'
 import { useAIInfoStore } from '../stores/aiInfo'
 
 const props = defineProps({
   indexing: { type: Boolean, default: false },
 })
-const emit = defineEmits(['generate', 'continue', 'rewrite', 'summarize', 'index', 'score', 'styleCheck', 'beats', 'assistant', 'autoWrite', 'outlineAlign', 'translate'])
+const emit = defineEmits(['generate', 'continue', 'rewrite', 'summarize', 'index', 'score', 'styleCheck', 'beats', 'assistant', 'autoWrite', 'outlineAlign', 'translate', 'batchOutline'])
 
 const { t } = useI18n()
 const info = useAIInfoStore()
@@ -21,6 +21,11 @@ const disabled = computed(() => !info.configured)
 
 <template>
   <div class="ai-toolbar">
+    <el-tooltip content="一次让 AI 草拟连续 N 章大纲,可预览再确认追加到工程末尾" placement="top" :show-after="300">
+      <el-button :disabled="disabled" :icon="Notebook" @click="emit('batchOutline')">
+        AI 批量草拟大纲
+      </el-button>
+    </el-tooltip>
     <el-tooltip content="列 3-5 个本章节拍(开头/转折/结尾),AI 生成时按拍推进,写后还会逐拍对账" placement="top" :show-after="300">
       <el-button :icon="Tickets" @click="emit('beats')">
         节拍

@@ -25,7 +25,7 @@ const routes = [
       {
         path: 'outline',
         name: 'workspace-outline',
-        component: () => import('../views/WorkspaceOutline.vue'),
+        redirect: (to) => ({ name: 'workspace-content', params: to.params }),
       },
       {
         path: 'characters',

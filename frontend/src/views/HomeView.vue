@@ -87,8 +87,8 @@ async function onImported(result) {
     t('home.importSuccess', { name: result.name, chapters: result.chapter_count, characters: 0 })
   )
   await store.refresh()
-  // 新建后默认进大纲页:导入的小说也常常需要补 summary / beats 才能用 AI
-  router.push({ name: 'workspace-outline', params: { id: String(result.id) } })
+  // 新建后进正文页:大纲侧栏就在正文页左侧,导入后先在这里补 summary / beats 再落笔
+  router.push({ name: 'workspace-content', params: { id: String(result.id) } })
 }
 
 function openCreateDialog() {
@@ -166,9 +166,9 @@ function subscribe(taskId) {
         await store.refresh()
         ElMessage.success(t('home.aiCreateDone', { n: aiProgress.value.index || 0 }))
         if (aiAutoNavigate.value && aiCreatedProjectId.value) {
-          // 新建后默认进大纲页:AI 已经生成了每章的 summary,正好在大纲里通览 + 补节拍
+          // 新建后默认进正文页:AI 已经生成了每章 summary,左侧大纲侧栏正好通览 + 补节拍
           router.push({
-            name: 'workspace-outline',
+            name: 'workspace-content',
             params: { id: String(aiCreatedProjectId.value) },
           })
         }
@@ -253,12 +253,12 @@ async function onQuickStart() {
     try {
       await outlineApi.batchCreate(project.id, drafts)
     } catch (e) {
-      // 章节落库失败不阻塞跳转 —— 用户进大纲页后还能手动加章
+      // 章节落库失败不阻塞跳转 —— 用户进正文页后还能手动加章
       console.warn('quick-start: batch-create chapters failed', e)
     }
     quickName.value = ''
     await store.refresh()
-    router.push({ name: 'workspace-outline', params: { id: String(project.id) } })
+    router.push({ name: 'workspace-content', params: { id: String(project.id) } })
   } catch (e) {
     const detail = e?.response?.data?.detail
     ElMessage.error(detail || e.message || t('home.quickStartFailed'))

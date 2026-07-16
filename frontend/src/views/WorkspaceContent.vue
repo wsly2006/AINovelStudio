@@ -16,7 +16,9 @@ import AIAssistantDrawer from '../components/AIAssistantDrawer.vue'
 import ChapterScoreDialog from '../components/ChapterScoreDialog.vue'
 import ChapterStyleDialog from '../components/ChapterStyleDialog.vue'
 import ChapterBeatsDialog from '../components/ChapterBeatsDialog.vue'
+import ChapterBeatsEditor from '../components/ChapterBeatsEditor.vue'
 import OutlineAlignmentDialog from '../components/OutlineAlignmentDialog.vue'
+import OutlineBatchDialog from '../components/OutlineBatchDialog.vue'
 import ChapterTranslateDrawer from '../components/ChapterTranslateDrawer.vue'
 import AutoWriteDialog from '../components/AutoWriteDialog.vue'
 import AutoWriteProgressDrawer from '../components/AutoWriteProgressDrawer.vue'
@@ -63,6 +65,16 @@ const outlineAlignVisible = ref(false)
 const translateDrawerVisible = ref(false)
 const glossaryCount = ref(0)
 
+// AI 批量草拟大纲对话框
+const batchOutlineVisible = ref(false)
+
+// 左侧大纲面板:标题/梗概/节拍的本地草稿,失焦落库
+const outlineTitleDraft = ref('')
+const outlineSummaryDraft = ref('')
+const outlineBeats = ref([])
+const savingOutlineMeta = ref(false)
+const savingOutlineBeats = ref(false)
+
 // 自动连写
 const autoWriteDialogVisible = ref(false)
 const autoWriteProgressVisible = ref(false)
@@ -87,36 +99,98 @@ const selectedChapterFullTitle = computed(() =>
   selectedChapter.value ? formatChapterFullTitle(selectedChapter.value, t) : ''
 )
 
-// 章节概述本地缓存:在编辑器顶部直接编辑,失焦自动落库
-const summaryInputEl = ref(null)
-const summaryDraft = ref('')
+// 左侧大纲面板加载:切章节时拉一次详情,把 title/summary/beats 装进 draft
+async function loadOutlineForChapter() {
+  const ch = selectedChapter.value
+  if (!ch) {
+    outlineTitleDraft.value = ''
+    outlineSummaryDraft.value = ''
+    outlineBeats.value = []
+    currentChapterBeats.value = []
+    currentChapterAlignment.value = []
+    return
+  }
+  outlineTitleDraft.value = ch.title || ''
+  outlineSummaryDraft.value = ch.summary || ''
+  try {
+    const detail = await chaptersApi.get(ch.id)
+    // detail 拿回的 title/summary 更权威,覆盖 draft(若外部动过)
+    outlineTitleDraft.value = detail.title || ''
+    outlineSummaryDraft.value = detail.summary || ''
+    outlineBeats.value = Array.isArray(detail.beats) ? detail.beats : []
+    currentChapterBeats.value = outlineBeats.value
+    currentChapterAlignment.value = Array.isArray(detail.beats_alignment)
+      ? detail.beats_alignment
+      : []
+  } catch {
+    outlineBeats.value = []
+    currentChapterBeats.value = []
+    currentChapterAlignment.value = []
+  }
+}
+
 watch(
   () => selectedChapter.value?.id,
   () => {
-    summaryDraft.value = selectedChapter.value?.summary || ''
+    loadOutlineForChapter()
   },
   { immediate: true }
 )
+
+// 外部(如 AI 生成梗概 / rename)更新了字段时同步到草稿,前提是用户没在输入
 watch(
   () => selectedChapter.value?.summary,
   (val) => {
-    // 外部(如 AI 生成梗概)更新了 summary 时同步到草稿,避免覆盖本地正在输入的修改
-    const ta = summaryInputEl.value?.$el?.querySelector?.('textarea')
-    if (document.activeElement !== ta) {
-      summaryDraft.value = val || ''
-    }
+    if (!isEditingOutline()) outlineSummaryDraft.value = val || ''
+  }
+)
+watch(
+  () => selectedChapter.value?.title,
+  (val) => {
+    if (!isEditingOutline()) outlineTitleDraft.value = val || ''
   }
 )
 
-async function flushSummary() {
+function isEditingOutline() {
+  const el = document.activeElement
+  if (!el) return false
+  return !!el.closest?.('.outline-pane')
+}
+
+async function flushOutlineMeta() {
   const ch = selectedChapter.value
   if (!ch) return
-  const next = summaryDraft.value || ''
-  if ((ch.summary || '') === next) return
+  const titleNext = (outlineTitleDraft.value || '').trim()
+  const summaryNext = outlineSummaryDraft.value || ''
+  const titleSame = (ch.title || '') === titleNext
+  const summarySame = (ch.summary || '') === summaryNext
+  if (titleSame && summarySame) return
+  savingOutlineMeta.value = true
   try {
-    await store.updateChapterMeta(ch.id, { summary: next })
+    await store.updateChapterMeta(ch.id, {
+      title: titleNext,
+      summary: summaryNext,
+    })
   } catch (e) {
     ElMessage.error(e.message || t('workspace.updateFailed'))
+  } finally {
+    savingOutlineMeta.value = false
+  }
+}
+
+async function onOutlineBeatsChange(next) {
+  // 大纲阶段更像 CRUD,失焦即落库;和 WorkspaceOutline 保持一致
+  outlineBeats.value = next
+  currentChapterBeats.value = next
+  const id = selectedChapter.value?.id
+  if (!id || savingOutlineBeats.value) return
+  savingOutlineBeats.value = true
+  try {
+    await chaptersApi.update(id, { beats: next })
+  } catch (e) {
+    ElMessage.error(e.message || t('workspace.updateFailed'))
+  } finally {
+    savingOutlineBeats.value = false
   }
 }
 
@@ -180,13 +254,13 @@ async function flushEditor() {
 async function onSelect(chapter) {
   if (chapter.id === store.selectedId) return
   await flushEditor()
-  await flushSummary()
+  await flushOutlineMeta()
   store.select(chapter.id)
 }
 
 async function onCreate() {
   await flushEditor()
-  await flushSummary()
+  await flushOutlineMeta()
   dialogMode.value = 'create'
   dialogOrderIndex.value = store.chapters.length + 1
   dialogTitle.value = ''
@@ -318,7 +392,7 @@ async function onAIGenerate() {
 // 自动连写:打开配置对话框,刷新最新章节列表后再开
 async function onAIAutoWrite() {
   await flushEditor()
-  await flushSummary()
+  await flushOutlineMeta()
   autoWriteDialogVisible.value = true
 }
 
@@ -354,9 +428,22 @@ async function onAIBeats() {
 function onBeatsSaved({ chapterId, beats, beats_alignment }) {
   // 同步到本地缓存,免得抽屉再次打开时还是旧值。改节拍会让对账结果失效,这里也跟着清掉
   if (selectedChapter.value?.id === chapterId) {
-    currentChapterBeats.value = Array.isArray(beats) ? beats : []
+    const nextBeats = Array.isArray(beats) ? beats : []
+    currentChapterBeats.value = nextBeats
+    outlineBeats.value = nextBeats
     currentChapterAlignment.value = Array.isArray(beats_alignment) ? beats_alignment : []
   }
+}
+
+function onBatchOutline() {
+  batchOutlineVisible.value = true
+}
+
+async function onBatchOutlineCreated() {
+  // 批量大纲落库后:刷章节列表,顺便重载当前章节的大纲面板
+  const projectId = Number(route.params.id)
+  await store.loadProject(projectId).catch(() => {})
+  await loadOutlineForChapter()
 }
 
 async function onAIContinue() {
@@ -438,7 +525,7 @@ const indexing = ref(false)
 async function onIndexChapter() {
   if (!selectedChapter.value || indexing.value) return
   await flushEditor()
-  await flushSummary()
+  await flushOutlineMeta()
   const projectId = Number(route.params.id)
   const chapterId = selectedChapter.value.id
   indexing.value = true
@@ -521,7 +608,7 @@ async function onOutlineAlign() {
 async function onAITranslate() {
   if (!selectedChapter.value) return
   await flushEditor()
-  await flushSummary()
+  await flushOutlineMeta()
   // 拉一下当前工程的术语表条数,只用于 hint;不阻塞抽屉打开
   try {
     const projectId = Number(route.params.id)
@@ -658,26 +745,56 @@ async function autoIndexAfterAI() {
           @translate="onAITranslate"
           @assistant="onAIAssistant"
           @auto-write="onAIAutoWrite"
+          @batch-outline="onBatchOutline"
         />
       </div>
-      <el-input
-        ref="summaryInputEl"
-        v-model="summaryDraft"
-        type="textarea"
-        :autosize="{ minRows: 2, maxRows: 5 }"
-        :placeholder="t('chapterDialog.summaryPlaceholder')"
-        class="chap-summary"
-        resize="none"
-        @blur="flushSummary"
-      />
-      <ChapterEditor
-        ref="editorRef"
-        :key="selectedChapter.id"
-        :chapter-id="selectedChapter.id"
-        class="editor-host"
-        @saved="onEditorSaved"
-        @request-rewrite="onAIRewrite"
-      />
+
+      <div class="split-body">
+        <aside class="outline-pane">
+          <div class="pane-title">本章大纲</div>
+          <el-input
+            v-model="outlineTitleDraft"
+            :placeholder="t('chapterDialog.titlePlaceholder')"
+            maxlength="200"
+            class="outline-title-input"
+            @blur="flushOutlineMeta"
+          />
+          <label class="field-label">章节梗概</label>
+          <el-input
+            v-model="outlineSummaryDraft"
+            type="textarea"
+            resize="none"
+            :placeholder="t('outline.summaryPlaceholder')"
+            maxlength="4000"
+            show-word-limit
+            class="outline-summary"
+            @blur="flushOutlineMeta"
+          />
+          <label class="field-label">本章节拍</label>
+          <div class="outline-beats-wrap">
+            <ChapterBeatsEditor
+              :model-value="outlineBeats"
+              @update:model-value="onOutlineBeatsChange"
+              :chapter-id="selectedChapter.id"
+              :threads="projectThreads"
+              :target-word-count="store.project?.words_per_chapter || 4000"
+              :alignment="currentChapterAlignment"
+              compact
+            />
+          </div>
+        </aside>
+
+        <div class="body-pane">
+          <ChapterEditor
+            ref="editorRef"
+            :key="selectedChapter.id"
+            :chapter-id="selectedChapter.id"
+            class="editor-host"
+            @saved="onEditorSaved"
+            @request-rewrite="onAIRewrite"
+          />
+        </div>
+      </div>
     </div>
   </main>
 
@@ -783,6 +900,14 @@ async function autoIndexAfterAI() {
     @finished="onAutoWriteFinished"
     @cancelled="onAutoWriteFinished"
   />
+
+  <OutlineBatchDialog
+    v-model="batchOutlineVisible"
+    :project-id="store.project?.id || null"
+    :chapters="store.chapters"
+    :default-target-word-count="store.project?.words_per_chapter || 4000"
+    @created="onBatchOutlineCreated"
+  />
 </template>
 
 <style scoped>
@@ -829,26 +954,79 @@ async function autoIndexAfterAI() {
   font-weight: 600;
   align-self: center;
 }
-.chap-summary {
-  flex-shrink: 0;
-  margin-bottom: 12px;
+.split-body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(360px, 460px) minmax(0, 1fr);
+  gap: 20px;
+  overflow: hidden;
 }
-.chap-summary :deep(.el-textarea__inner) {
+.outline-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  overflow: hidden;
+  padding: 16px 16px 12px;
+  background: #fafbfc;
+  border: 1px solid #e5e6eb;
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+.outline-pane .pane-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1f2329;
+  letter-spacing: 0.4px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #eef0f2;
+  margin-bottom: 2px;
+}
+.outline-pane .field-label {
   font-size: 13px;
-  line-height: 1.6;
+  font-weight: 600;
   color: #4e5969;
-  background: #f7f8fa;
-  border-color: transparent;
-  box-shadow: none;
-  padding: 8px 12px;
+  margin-top: 6px;
 }
-.chap-summary :deep(.el-textarea__inner:hover) {
-  background: #f2f3f5;
+.outline-title-input :deep(.el-input__inner) {
+  font-size: 15px;
+  font-weight: 600;
 }
-.chap-summary :deep(.el-textarea__inner:focus) {
+.outline-summary {
+  flex: 1 1 auto;
+  min-height: 260px;
+  display: flex;
+}
+.outline-summary :deep(.el-textarea) {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+.outline-summary :deep(.el-textarea__inner) {
+  flex: 1;
+  min-height: 260px;
+  font-size: 14px;
+  line-height: 1.75;
+  padding: 12px 14px;
   background: #fff;
-  border-color: var(--el-color-primary);
+  border-radius: 8px;
+  box-shadow: 0 0 0 1px #e5e6eb inset;
+}
+.outline-summary :deep(.el-textarea__inner:focus) {
   box-shadow: 0 0 0 1px var(--el-color-primary) inset;
+}
+.outline-beats-wrap {
+  flex: 0 0 auto;
+  max-height: 40%;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+.body-pane {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
 .editor-host {
   flex: 1;
