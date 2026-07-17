@@ -769,7 +769,7 @@ async function autoIndexAfterAI() {
 
       <div class="split-body">
         <aside class="outline-pane">
-          <div class="pane-title">本章大纲</div>
+          <div class="pane-title">本章标题</div>
           <el-input
             v-model="outlineTitleDraft"
             :placeholder="t('chapterDialog.titlePlaceholder')"
