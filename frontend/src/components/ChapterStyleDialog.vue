@@ -8,8 +8,10 @@ const props = defineProps({
   modelValue: { type: Boolean, required: true },
   chapterId: { type: Number, default: null },
   chapterTitle: { type: String, default: '' },
+  // 打开时是否自动触发一次检查(生成本章后自动联动用)
+  autoStart: { type: Boolean, default: false },
 })
-const emit = defineEmits(['update:modelValue', 'changed', 'jumpRewrite'])
+const emit = defineEmits(['update:modelValue', 'changed', 'jumpRewrite', 'auto-started'])
 
 const loading = ref(false)
 const checking = ref(false)
@@ -55,9 +57,15 @@ async function loadList() {
 
 watch(
   () => props.modelValue,
-  (v) => {
-    if (v) loadList()
-    else {
+  async (v) => {
+    if (v) {
+      await loadList()
+      // 生成本章后联动:打开对话框即自动开始检查,不用用户再点一次按钮
+      if (props.autoStart && !checking.value) {
+        emit('auto-started')
+        onCheck()
+      }
+    } else {
       items.value = []
       selectedId.value = null
       activeIssueIdx.value = 0
@@ -277,7 +285,7 @@ function onJumpRewrite(issue) {
         </div>
 
         <!-- 历史 -->
-        <div class="history" v-if="items.length > 1">
+        <div class="history" v-if="items.length >= 1">
           <div class="section-label hist-title">历史检查 ({{ items.length }} 次)</div>
           <div class="hist-list">
             <div

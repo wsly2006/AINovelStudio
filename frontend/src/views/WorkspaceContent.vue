@@ -57,8 +57,10 @@ const dialogTargetId = ref(null)
 
 // AI 评分对话框
 const scoreVisible = ref(false)
+const scoreAutoStart = ref(false)
 // AI 文风检查对话框
 const styleVisible = ref(false)
+const styleAutoStart = ref(false)
 // 大纲一致性对账对话框
 const outlineAlignVisible = ref(false)
 // 章节翻译抽屉(M3)
@@ -659,15 +661,31 @@ function onStyleJumpRewrite({ quote, suggestion, why, kind }) {
   drawerVisible.value = true
 }
 
-async function onDrawerReplace(text) {
+async function onDrawerReplace(text, followups) {
   await snapshotBeforeAI()
   editorRef.value?.replaceAll(text)
   await autoIndexAfterAI()
+  await runFollowups(followups)
 }
-async function onDrawerAppend(text) {
+async function onDrawerAppend(text, followups) {
   await snapshotBeforeAI()
   editorRef.value?.appendToEnd(text)
   await autoIndexAfterAI()
+  await runFollowups(followups)
+}
+
+// 生成本章后按抽屉里的勾选联动打开检查/评分面板。两个都勾则文风优先、评分紧随,面板可并存
+async function runFollowups(followups) {
+  if (!followups || !selectedChapter.value) return
+  await flushEditor()
+  if (followups.styleCheck) {
+    styleAutoStart.value = true
+    styleVisible.value = true
+  }
+  if (followups.score) {
+    scoreAutoStart.value = true
+    scoreVisible.value = true
+  }
 }
 async function onDrawerInsert(text) {
   await snapshotBeforeAI()
@@ -833,15 +851,19 @@ async function autoIndexAfterAI() {
     v-model="scoreVisible"
     :chapter-id="selectedChapter?.id || null"
     :chapter-title="selectedChapterFullTitle"
+    :auto-start="scoreAutoStart"
     @changed="onScoreChanged"
+    @auto-started="scoreAutoStart = false"
   />
 
   <ChapterStyleDialog
     v-model="styleVisible"
     :chapter-id="selectedChapter?.id || null"
     :chapter-title="selectedChapterFullTitle"
+    :auto-start="styleAutoStart"
     @changed="onStyleChanged"
     @jump-rewrite="onStyleJumpRewrite"
+    @auto-started="styleAutoStart = false"
   />
 
   <OutlineAlignmentDialog

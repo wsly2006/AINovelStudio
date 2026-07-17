@@ -44,6 +44,30 @@ const rewriteInstruction = ref('')
 const selectedCharacterIds = ref([])
 const selectedWorldIds = ref([])
 const selectedItemIds = ref([])
+// 生成本章后自动执行的后处理:文风检查 / AI 评分。默认不勾选,勾选后写入 localStorage,下次自动恢复
+const autoStyleCheck = ref(false)
+const autoScore = ref(false)
+const AUTO_FOLLOWUPS_KEY = 'aiGenerateDrawer.autoFollowups.v1'
+try {
+  const raw = localStorage.getItem(AUTO_FOLLOWUPS_KEY)
+  if (raw) {
+    const obj = JSON.parse(raw)
+    autoStyleCheck.value = !!obj.styleCheck
+    autoScore.value = !!obj.score
+  }
+} catch {
+  // 忽略解析异常,回退到默认全不选
+}
+watch([autoStyleCheck, autoScore], () => {
+  try {
+    localStorage.setItem(
+      AUTO_FOLLOWUPS_KEY,
+      JSON.stringify({ styleCheck: autoStyleCheck.value, score: autoScore.value }),
+    )
+  } catch {
+    // localStorage 不可用时静默失败,不影响本次会话的选择
+  }
+})
 // 节拍:仅 generate 模式启用,默认展开折叠面板
 const beats = ref([])
 const beatsAlignment = ref([])
@@ -220,14 +244,20 @@ function collapseBlankLines(text) {
   return (text || '').replace(/\r\n/g, '\n').replace(/\n{2,}/g, '\n')
 }
 
+// 仅 generate 模式携带自动后处理开关;其他模式发空对象,父级按 falsy 处理
+function followupOptions() {
+  if (props.mode !== 'generate') return {}
+  return { styleCheck: autoStyleCheck.value, score: autoScore.value }
+}
+
 function onAccept() {
   // 全章替换(generate / 整章场景)
-  emit('replace', collapseBlankLines(result.value))
+  emit('replace', collapseBlankLines(result.value), followupOptions())
   close()
 }
 
 function onAppend() {
-  emit('append', collapseBlankLines(result.value))
+  emit('append', collapseBlankLines(result.value), followupOptions())
   close()
 }
 
@@ -293,6 +323,15 @@ function onReplaceSelection() {
             :rows="3"
             :placeholder="t('ai.extraInstructionPlaceholder')"
           />
+        </el-form-item>
+
+        <!-- 生成正文后自动执行的检查项;勾选状态会记忆到 localStorage -->
+        <el-form-item label="生成后自动执行">
+          <div class="followup-row">
+            <el-checkbox v-model="autoStyleCheck">AI 文风检查</el-checkbox>
+            <el-checkbox v-model="autoScore">AI 评分</el-checkbox>
+          </div>
+          <div class="hint">勾选后,采纳生成结果并写回正文后会自动打开对应面板并开始检查/评分</div>
         </el-form-item>
       </template>
 
@@ -685,5 +724,11 @@ function onReplaceSelection() {
 }
 .caret {
   color: #86909c;
+}
+.followup-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 </style>

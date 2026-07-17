@@ -8,8 +8,10 @@ const props = defineProps({
   modelValue: { type: Boolean, required: true },
   chapterId: { type: Number, default: null },
   chapterTitle: { type: String, default: '' },
+  // 打开时是否自动触发一次评分(生成本章后自动联动用)
+  autoStart: { type: Boolean, default: false },
 })
-const emit = defineEmits(['update:modelValue', 'changed'])
+const emit = defineEmits(['update:modelValue', 'changed', 'auto-started'])
 
 const loading = ref(false)
 const scoring = ref(false)
@@ -35,9 +37,15 @@ async function loadList() {
 
 watch(
   () => props.modelValue,
-  (v) => {
-    if (v) loadList()
-    else {
+  async (v) => {
+    if (v) {
+      await loadList()
+      // 生成本章后联动:打开对话框即自动开始评分,不用用户再点一次按钮
+      if (props.autoStart && !scoring.value) {
+        emit('auto-started')
+        onScore()
+      }
+    } else {
       items.value = []
       selectedId.value = null
     }
@@ -185,7 +193,7 @@ const sparkline = computed(() => {
         </div>
 
         <!-- 历史 -->
-        <div class="history" v-if="items.length > 1">
+        <div class="history" v-if="items.length >= 1">
           <div class="section-label">历史评分 ({{ items.length }} 次)</div>
 
           <div v-if="sparkline" class="trend">

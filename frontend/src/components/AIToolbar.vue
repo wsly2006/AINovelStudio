@@ -21,9 +21,24 @@ const disabled = computed(() => !info.configured)
 
 <template>
   <div class="ai-toolbar">
+    <el-tooltip content="整章 AI 生成,自动注入总纲/主线/节拍/人物/世界观" placement="top" :show-after="300">
+      <el-button :disabled="disabled" :icon="MagicStick" @click="emit('generate')">
+        {{ t('ai.generate') }}
+      </el-button>
+    </el-tooltip>
+    <el-tooltip content="挑出读起来「像 AI 写」的段落,给出改写方向,可一键定位编辑器" placement="top" :show-after="300">
+      <el-button :disabled="disabled" :icon="View" @click="emit('styleCheck')">
+        AI 文风检查
+      </el-button>
+    </el-tooltip>
+    <el-tooltip content="文笔 / 情节 / 人物 / 综合 4 维 AI 评分,留历史曲线" placement="top" :show-after="300">
+      <el-button :disabled="disabled" :icon="StarFilled" @click="emit('score')">
+        AI 评分
+      </el-button>
+    </el-tooltip>
     <el-tooltip content="一次让 AI 草拟连续 N 章大纲,可预览再确认追加到工程末尾" placement="top" :show-after="300">
       <el-button :disabled="disabled" :icon="Notebook" @click="emit('batchOutline')">
-        AI 批量草拟大纲
+        AI 生成大纲
       </el-button>
     </el-tooltip>
     <el-tooltip content="列 3-5 个本章节拍(开头/转折/结尾),AI 生成时按拍推进,写后还会逐拍对账" placement="top" :show-after="300">
@@ -31,19 +46,9 @@ const disabled = computed(() => !info.configured)
         节拍
       </el-button>
     </el-tooltip>
-    <el-tooltip content="整章 AI 生成,自动注入总纲/主线/节拍/人物/世界观" placement="top" :show-after="300">
-      <el-button :disabled="disabled" :icon="MagicStick" @click="emit('generate')">
-        {{ t('ai.generate') }}
-      </el-button>
-    </el-tooltip>
     <el-tooltip content="选起点 + 章数,后台连续生成,每章自动索引/对账/评分,质量不达标按模式重试或停下" placement="top" :show-after="300">
       <el-button :disabled="disabled" :icon="VideoPlay" @click="emit('autoWrite')">
         自动连写
-      </el-button>
-    </el-tooltip>
-    <el-tooltip content="挑出读起来「像 AI 写」的段落,给出改写方向,可一键定位编辑器" placement="top" :show-after="300">
-      <el-button :disabled="disabled" :icon="View" @click="emit('styleCheck')">
-        AI 文风检查
       </el-button>
     </el-tooltip>
     <el-tooltip content="从光标处往下续写,自动带上前文上下文" placement="top" :show-after="300">
@@ -69,11 +74,6 @@ const disabled = computed(() => !info.configured)
         @click="emit('index')"
       >
         {{ t('ai.indexChapter') }}
-      </el-button>
-    </el-tooltip>
-    <el-tooltip content="文笔 / 情节 / 人物 / 综合 4 维 AI 评分,留历史曲线" placement="top" :show-after="300">
-      <el-button :disabled="disabled" :icon="StarFilled" @click="emit('score')">
-        评分
       </el-button>
     </el-tooltip>
     <el-tooltip content="把章节正文与大纲(大纲文本 + 节拍)对账,逐项 covered / partial / missing" placement="top" :show-after="300">
