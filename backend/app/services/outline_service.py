@@ -1,10 +1,10 @@
 """大纲模式服务:批量草拟连续章节大纲 + 落库 + 章节-大纲对账。
 
 设计:
-- 「大纲」= 章节的 title + summary + beats,无新表
+- 「大纲」= 章节的 title + 大纲文本(summary 字段) + beats,无新表
 - 批量草拟:一次让 AI 输出 N 章,本服务**不直接落库**;前端预览后确认才调 batch_create
 - 批量落库:在末尾追加 N 个 status='outlined' 的空正文章节
-- 章节-大纲对账:把章节正文与计划好的 summary + beats 对账,逐项 covered/partial/missing
+- 章节-大纲对账:把章节正文与计划好的 大纲文本 + beats 对账,逐项 covered/partial/missing
 """
 
 from __future__ import annotations
@@ -239,7 +239,7 @@ async def check_outline_alignment(
 ) -> OutlineAlignmentResult:
     """章节正文 vs 大纲对账。
 
-    没有正文 / 没有大纲(summary 为空且无 beats)时直接返回 missing,不调 AI。
+    没有正文 / 没有大纲(大纲文本为空且无 beats)时直接返回 missing,不调 AI。
     """
     chapter = db.get(Chapter, chapter_id)
     if chapter is None:
@@ -253,9 +253,9 @@ async def check_outline_alignment(
     if not has_summary and not has_beats:
         return OutlineAlignmentResult(
             summary_status="missing",
-            summary_note="本章未填梗概,也未列节拍,无大纲可对账",
+            summary_note="本章未填大纲,也未列节拍,无内容可对账",
             beats=[],
-            overall_note="请先在大纲模式下补充本章梗概或节拍,再回来对账",
+            overall_note="请先在大纲模式下补充本章大纲或节拍,再回来对账",
             covered=0,
             partial=0,
             missing=1,
@@ -275,7 +275,7 @@ async def check_outline_alignment(
             ]
         return OutlineAlignmentResult(
             summary_status="missing" if has_summary else "missing",
-            summary_note="正文为空,未兑现梗概" if has_summary else "本章未填梗概",
+            summary_note="正文为空,未兑现大纲" if has_summary else "本章未填大纲",
             beats=beat_items,
             overall_note="本章正文为空,无法对账",
             covered=0,

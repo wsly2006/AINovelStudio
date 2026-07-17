@@ -77,7 +77,7 @@ def test_outline_batch_suggest_drops_empty_chapters(
     payload = (
         '{"chapters": ['
         '{"title": "", "summary": "", "beats": []},'
-        '{"title": "", "summary": "有梗概的章节", "beats": []}'
+        '{"title": "", "summary": "有大纲的章节", "beats": []}'
         ']}'
     )
     monkeypatch.setattr(ai_client_module, "complete", _stub_complete(payload))
@@ -89,7 +89,7 @@ def test_outline_batch_suggest_drops_empty_chapters(
     assert r.status_code == 200
     drafts = r.json()["drafts"]
     assert len(drafts) == 1
-    assert drafts[0]["summary"] == "有梗概的章节"
+    assert drafts[0]["summary"] == "有大纲的章节"
 
 
 def test_outline_batch_suggest_handles_markdown_wrapped(
@@ -214,7 +214,7 @@ def test_outline_alignment_returns_per_beat_status(
     )
 
     payload = (
-        '{"summary_status": "covered", "summary_note": "正文按梗概兑现",'
+        '{"summary_status": "covered", "summary_note": "正文按大纲兑现",'
         ' "beats": ['
         '{"beat_index": 0, "status": "covered", "note": "拾符场景写到了"},'
         '{"beat_index": 1, "status": "missing", "note": "正文没写到追兵"}'

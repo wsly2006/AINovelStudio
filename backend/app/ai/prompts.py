@@ -255,11 +255,11 @@ def _extra_instruction_block(extra: str | None) -> str:
 
 
 def _chapter_summary_block(chapter: Chapter) -> str:
-    """本章梗概块。写正文 / 续写时都要严格遵循这份大纲。"""
+    """本章大纲块。写正文 / 续写时都要严格遵循这份大纲。"""
     text = (chapter.summary or "").strip()
     if not text:
         return ""
-    return f"本章大纲梗概(严格遵循,本章应完整覆盖以下情节):\n{text}"
+    return f"本章大纲(严格遵循,本章应完整覆盖以下情节):\n{text}"
 
 
 def build_generate_messages(
@@ -381,7 +381,7 @@ def build_suggest_beats_messages(
         "threads_block": _threads_context(plot_threads or []),
         "previous_summary": _previous_chapters_context(previous, chapter.id),
         "chapter_label": _chapter_label(chapter),
-        "chapter_summary": (chapter.summary or "").strip() or "(本章梗概暂未填)",
+        "chapter_summary": (chapter.summary or "").strip() or "(本章大纲暂未填)",
         "target_word_count": str(target_word_count),
         "extra_instruction_block": _extra_instruction_block(extra_instruction),
     }
@@ -417,7 +417,7 @@ def build_outline_alignment_messages(
     db=None,
 ) -> list[dict]:
     """章节正文 vs 大纲对账(summary + beats)。"""
-    summary = (chapter.summary or "").strip() or "(本章未填梗概)"
+    summary = (chapter.summary or "").strip() or "(本章未填大纲)"
     values = {
         "chapter_label": _chapter_label(chapter),
         "summary_block": summary,
@@ -467,7 +467,7 @@ def _assistant_chapter_block(
     label = _chapter_label(chapter)
     head = f"当前章节:{label}"
     if (chapter.summary or "").strip():
-        head += f"\n章节梗概:{chapter.summary.strip()}"
+        head += f"\n本章大纲:{chapter.summary.strip()}"
     if not include_content:
         return head
     text = (chapter.content or "").strip()

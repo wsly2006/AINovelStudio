@@ -70,12 +70,12 @@ def test_update_chapter(client: TestClient) -> None:
     cid = client.post(f"/api/projects/{pid}/chapters", json={"title": "旧名"}).json()["id"]
     r = client.patch(
         f"/api/chapters/{cid}",
-        json={"title": "新名", "summary": "梗概", "status": "writing"},
+        json={"title": "新名", "summary": "大纲", "status": "writing"},
     )
     assert r.status_code == 200
     body = r.json()
     assert body["title"] == "新名"
-    assert body["summary"] == "梗概"
+    assert body["summary"] == "大纲"
     assert body["status"] == "writing"
 
 

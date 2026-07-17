@@ -56,7 +56,7 @@ const disabled = computed(() => !info.configured)
         {{ t('ai.rewrite') }}
       </el-button>
     </el-tooltip>
-    <el-tooltip content="让 AI 为本章生成简短概述,写回章节摘要" placement="top" :show-after="300">
+    <el-tooltip content="让 AI 为本章生成简短大纲,写回章节大纲字段" placement="top" :show-after="300">
       <el-button :disabled="disabled" :icon="Document" @click="emit('summarize')">
         {{ t('ai.summarize') }}
       </el-button>
@@ -76,7 +76,7 @@ const disabled = computed(() => !info.configured)
         评分
       </el-button>
     </el-tooltip>
-    <el-tooltip content="把章节正文与大纲(梗概 + 节拍)对账,逐项 covered / partial / missing" placement="top" :show-after="300">
+    <el-tooltip content="把章节正文与大纲(大纲文本 + 节拍)对账,逐项 covered / partial / missing" placement="top" :show-after="300">
       <el-button :disabled="disabled" :icon="Aim" @click="emit('outlineAlign')">
         {{ t('outlineAlign.button') }}
       </el-button>

@@ -40,7 +40,7 @@ _GEN_USER = """工程信息:{{project_info}}
 
 {{threads_block}}
 
-前序章节梗概:
+前序章节大纲:
 {{previous_summary}}
 
 {{chapter_summary_block}}
@@ -59,7 +59,7 @@ _GEN_USER = """工程信息:{{project_info}}
 
 现在请创作{{chapter_label}}。
 目标字数:约 {{target_word_count}} 字。
-请严格按「本章大纲梗概」推进本章情节,把梗概里列出的事件、动机、冲突全部落到正文;承接上一章结尾,贴合总纲走向、推动主线进展。{{extra_instruction_block}}"""
+请严格按「本章大纲」推进本章情节,把大纲里列出的事件、动机、冲突全部落到正文;承接上一章结尾,贴合总纲走向、推动主线进展。{{extra_instruction_block}}"""
 
 # ============ 2. 续写 ============
 
@@ -69,7 +69,7 @@ _CONT_USER = """工程信息:{{project_info}}
 
 {{threads_block}}
 
-前序章节梗概:
+前序章节大纲:
 {{previous_summary}}
 
 {{chapter_summary_block}}
@@ -85,7 +85,7 @@ _CONT_USER = """工程信息:{{project_info}}
 {{tasks_block}}
 
 当前正在写{{chapter_label}},已写到下面的位置,请从此处自然续写若干段。
-续写要贴合「本章大纲梗概」剩余尚未展开的部分,不要偏离本章设定的情节走向。
+续写要贴合「本章大纲」剩余尚未展开的部分,不要偏离本章设定的情节走向。
 
 已写内容:
 ---
@@ -115,11 +115,11 @@ _REWRITE_USER = """{{project_info_block}}
 
 只输出改写后的文字。"""
 
-# ============ 4. 章节梗概 ============
+# ============ 4. 章节大纲 ============
 
-_SUMMARIZE_SYSTEM = "你是文本摘要助手,输出准确、客观、紧凑的中文梗概。"
+_SUMMARIZE_SYSTEM = "你是文本摘要助手,输出准确、客观、紧凑的中文大纲。"
 
-_SUMMARIZE_USER = """请为以下章节生成一段简洁的梗概(80~150 字),概括关键事件、人物动向与情绪基调。只输出梗概本身。
+_SUMMARIZE_USER = """请为以下章节生成一段简洁的大纲(80~150 字),概括关键事件、人物动向与情绪基调。只输出大纲本身。
 
 章节标题:{{chapter_label}}
 
@@ -221,11 +221,11 @@ _SUGGEST_BEATS_USER = """请为下面这一章草拟 3-5 个节拍(beat)。
 
 {{threads_block}}
 
-前序章节梗概:
+前序章节大纲:
 {{previous_summary}}
 
 待写章节:{{chapter_label}}
-本章梗概(可空):{{chapter_summary}}
+本章大纲(可空):{{chapter_summary}}
 目标字数:约 {{target_word_count}} 字。
 
 要求:
@@ -308,7 +308,7 @@ _SUGGEST_OUTLINES_BATCH_USER = """请为下面这本书连续草拟 {{count}} �
 
 {{threads_block}}
 
-前序章节梗概(供承接,不要重复其情节):
+前序章节大纲(供承接,不要重复其情节):
 {{previous_summary}}
 
 要求:
@@ -343,7 +343,7 @@ _SUGGEST_OUTLINES_BATCH_USER = """请为下面这本书连续草拟 {{count}} �
 # ============ 4g. 章节内容 vs 大纲一致性检查 ============
 
 _OUTLINE_ALIGNMENT_SYSTEM = (
-    "你是冷静的中文小说编辑。给定本章的「计划大纲」(梗概 + 节拍)与「实际正文」,"
+    "你是冷静的中文小说编辑。给定本章的「计划大纲」(大纲文本 + 节拍)与「实际正文」,"
     "判断正文是否兑现了大纲的承诺,逐项给出 covered / partial / missing。"
     "covered=完全兑现,partial=有提到但弱化或走味,missing=完全没写到。"
     "只看正文里实际写出的内容,不要脑补。"
@@ -354,7 +354,7 @@ _OUTLINE_ALIGNMENT_USER = """请对账本章的「计划大纲」与「实际正
 
 章节:{{chapter_label}}
 
-【计划梗概】
+【计划大纲】
 {{summary_block}}
 
 【计划节拍】(按顺序排列,beat_index 从 0 起算)
@@ -366,19 +366,19 @@ _OUTLINE_ALIGNMENT_USER = """请对账本章的「计划大纲」与「实际正
 ---
 
 请逐项判断:
-1. 梗概是否被正文兑现:summary_status + summary_note(30-100 字)
+1. 大纲是否被正文兑现:summary_status + summary_note(30-100 字)
 2. 每个节拍是否被正文兑现:逐拍 status + note(30-100 字)
 3. overall_note:60-150 字总评本章「写得是否按大纲走」、跑偏在哪、有没有意外的好
 
 要求:
 - 输出顺序必须和节拍顺序一致,beat_index 不能跳号
 - 如果章节没有节拍,beats 返回空数组
-- summary 为空时,summary_status 用 "missing",summary_note 写「本章未填梗概」
+- summary 为空时,summary_status 用 "missing",summary_note 写「本章未填大纲」
 
 输出 JSON,严格遵循:
 {
   "summary_status": "covered",
-  "summary_note": "梗概里说的 X 在正文里如何兑现",
+  "summary_note": "大纲里说的 X 在正文里如何兑现",
   "beats": [
     {
       "beat_index": 0,
@@ -635,7 +635,7 @@ _TRANSLATE_USER = """目标语言:{{target_lang_label}}
 【文风指令】(本工程作者写的目标语文风偏好,与术语表同级硬约束):
 {{style_guide_block}}
 
-前序章节梗概:{{previous_summary}}
+前序章节大纲:{{previous_summary}}
 
 现在请把【{{chapter_label}}】翻译为目标语言,严格遵守术语表与文风指令。
 
@@ -807,7 +807,7 @@ PROMPTS: tuple[PromptDef, ...] = (
     ),
     PromptDef(
         key="chapter.summarize",
-        name="章节梗概",
+        name="章节大纲",
         group="writing",
         description="给单章生成 80~150 字摘要。",
         default_system=_SUMMARIZE_SYSTEM,
@@ -858,7 +858,7 @@ PROMPTS: tuple[PromptDef, ...] = (
         key="outline.suggest_batch",
         name="批量草拟章节大纲",
         group="outline",
-        description="大纲模式:为连续 N 章一次性草拟 title + summary + beats,确保章节之间承接顺畅。",
+        description="大纲模式:为连续 N 章一次性草拟 title + 大纲 + beats,确保章节之间承接顺畅。",
         default_system=_SUGGEST_OUTLINES_BATCH_SYSTEM,
         default_user=_SUGGEST_OUTLINES_BATCH_USER,
         placeholders=(
@@ -871,7 +871,7 @@ PROMPTS: tuple[PromptDef, ...] = (
         key="chapter.outline_alignment",
         name="章节-大纲一致性对账",
         group="analysis",
-        description="把章节正文与计划大纲(梗概 + 节拍)对账,逐项给 covered / partial / missing。",
+        description="把章节正文与计划大纲(大纲文本 + 节拍)对账,逐项给 covered / partial / missing。",
         default_system=_OUTLINE_ALIGNMENT_SYSTEM,
         default_user=_OUTLINE_ALIGNMENT_USER,
         placeholders=(

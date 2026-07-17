@@ -68,7 +68,7 @@ const glossaryCount = ref(0)
 // AI 批量草拟大纲对话框
 const batchOutlineVisible = ref(false)
 
-// 左侧大纲面板:标题/梗概/节拍的本地草稿,失焦落库
+// 左侧大纲面板:标题/大纲文本/节拍的本地草稿,失焦落库
 const outlineTitleDraft = ref('')
 const outlineSummaryDraft = ref('')
 const outlineBeats = ref([])
@@ -137,7 +137,7 @@ watch(
   { immediate: true }
 )
 
-// 外部(如 AI 生成梗概 / rename)更新了字段时同步到草稿,前提是用户没在输入
+// 外部(如 AI 生成大纲 / rename)更新了字段时同步到草稿,前提是用户没在输入
 watch(
   () => selectedChapter.value?.summary,
   (val) => {
@@ -759,7 +759,7 @@ async function autoIndexAfterAI() {
             class="outline-title-input"
             @blur="flushOutlineMeta"
           />
-          <label class="field-label">章节梗概</label>
+          <label class="field-label">本章大纲</label>
           <el-input
             v-model="outlineSummaryDraft"
             type="textarea"

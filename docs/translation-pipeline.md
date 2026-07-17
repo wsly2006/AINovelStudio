@@ -58,7 +58,7 @@
 ### M3 — 章节翻译核心（commit `7d763ac`）
 
 - `chapter_versions` 加 `lang` 列 + 索引 `(chapter_id, lang, created_at)`
-- Prompt `chapter.translate`：术语表全量注入 + 前序章节梗概
+- Prompt `chapter.translate`：术语表全量注入 + 前序章节大纲
 - SSE 路由 `POST /api/chapters/{id}/translate`，逐 token 流式
 - 落库 `reason='translated', lang=target_lang`，5 条/语种独立 trim
 - 前端：正文 tab AI 工具栏「翻译本章」按钮 + 翻译抽屉；版本历史按 lang 过滤 + 徽章

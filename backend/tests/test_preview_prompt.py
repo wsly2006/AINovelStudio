@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 
 
 def _setup_full_project(client: TestClient) -> int:
-    """造个含总纲、主线、章节梗概的工程,prompt 才有东西可看。"""
+    """造个含总纲、主线、章节大纲的工程,prompt 才有东西可看。"""
     pid = client.post(
         "/api/projects",
         json={

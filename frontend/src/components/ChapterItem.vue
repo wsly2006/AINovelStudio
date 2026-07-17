@@ -8,7 +8,7 @@ const props = defineProps({
   chapter: { type: Object, required: true },
   active: { type: Boolean, default: false },
   // 'content' = 正文 tab(默认),显示字数 / 评分 / 文风徽章
-  // 'outline' = 大纲 tab,改显节拍数 / 梗概一行预览
+  // 'outline' = 大纲 tab,改显节拍数 / 大纲一行预览
   mode: { type: String, default: 'content' },
 })
 const emit = defineEmits(['select', 'rename', 'delete', 'edit'])
