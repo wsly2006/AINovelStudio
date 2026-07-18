@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.ai import client as ai_client_module
 from app.ai.tools import translation as t
+from app.ai.tools import versions as v_tools
 from app.models.chapter_version import ChapterVersion
 
 _name_seq = count(1)
@@ -225,14 +226,14 @@ def test_get_chapter_version_returns_full_content(
     db_session.commit()
     db_session.refresh(v)
 
-    detail = t.get_chapter_version(version_id=v.id)
+    detail = v_tools.get_chapter_version(version_id=v.id)
     assert detail["id"] == v.id
     assert detail["content"] == "Full English content here."
     assert detail["lang"] == "en-US"
 
 
 def test_translation_tools_registered() -> None:
-    """烟测:5 个工具都进了 REGISTRY"""
+    """烟测:4 个翻译工具 + 1 个通用版本读取工具都在 REGISTRY 里"""
     from app.ai.tools.registry import REGISTRY
 
     expected = {

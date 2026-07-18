@@ -60,6 +60,7 @@ build/
 # --- Claude Code 本地会话设置 ---
 .claude/
 CLAUDE.md
+.mcp.json
 
 # --- 本地构建笔记 / 阶段性文档(不入库) ---
 build_mcp.md

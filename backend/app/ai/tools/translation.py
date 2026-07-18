@@ -4,13 +4,13 @@
 也以 MCP 工具的形式暴露,让 Claude Desktop / Code 能直接驱动翻译流程。
 
 设计要点:
-- list_glossary / get_chapter_version 只读,直接 mcp_safe=True
+- list_glossary / check_translation_consistency 只读,直接 mcp_safe=True
 - upsert_glossary_entry / translate_chapter 是写操作,dangerous=True,
   受 hooks.writes_enabled 闸门保护
 - translate_chapter 同步阻塞返回,内部走 chapter_translation_service
   的 translate_chapter_blocking(asyncio.run 把异步 SSE 流收完)
-- 不返回译文全文,只给 500 字 preview;完整内容让 LLM 用 get_chapter_version
-  专门拉
+- 不返回译文全文,只给 500 字 preview;完整译文让 LLM 用 versions.py 的
+  get_chapter_version 拉(那个工具本身就是通用的历史版本读取)
 """
 
 from __future__ import annotations
@@ -179,17 +179,3 @@ def check_translation_consistency(
         )
 
 
-@tool(category="translation")
-@friendly_errors
-def get_chapter_version(version_id: int) -> dict:
-    """读取单条章节版本的完整内容(包含 lang 字段)。
-
-    给 translate_chapter 配套用:拿到 version_id 后想看完整译文就调本工具。
-    也能查中文版本的历史快照。
-
-    返回 {id, chapter_id, content, word_count, reason, label, lang, created_at}。
-    """
-    with with_db() as db:
-        return chapter_version_service.get_version(db, version_id).model_dump(
-            mode="json"
-        )
