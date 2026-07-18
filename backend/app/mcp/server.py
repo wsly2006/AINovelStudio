@@ -84,8 +84,25 @@ for _t in REGISTRY.values():
 
 
 def main() -> None:
-    # FastMCP.run() 默认走 stdio transport,会接管 stdin/stdout 协议帧
-    mcp.run()
+    # 默认保持 stdio — Claude Desktop / Code 通过管道拉起进程,不能改动;
+    # 显式指定 --transport streamable-http/sse 时才切到网络监听,给别的客户端连
+    import argparse
+
+    parser = argparse.ArgumentParser(prog="app.mcp.server")
+    parser.add_argument(
+        "--transport",
+        choices=["stdio", "sse", "streamable-http"],
+        default="stdio",
+    )
+    parser.add_argument("--host", default="127.0.0.1")
+    parser.add_argument("--port", type=int, default=11889)
+    args = parser.parse_args()
+
+    if args.transport != "stdio":
+        mcp.settings.host = args.host
+        mcp.settings.port = args.port
+
+    mcp.run(transport=args.transport)
 
 
 if __name__ == "__main__":
