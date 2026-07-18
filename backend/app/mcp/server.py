@@ -98,11 +98,32 @@ def main() -> None:
     parser.add_argument("--port", type=int, default=11889)
     args = parser.parse_args()
 
-    if args.transport != "stdio":
-        mcp.settings.host = args.host
-        mcp.settings.port = args.port
+    if args.transport == "stdio":
+        mcp.run(transport="stdio")
+        return
 
-    mcp.run(transport=args.transport)
+    # 网络 transport 要给浏览器里的 MCP Inspector 套 CORS,否则 fetch 直接被拦;
+    # mcp-session-id 必须放进 expose_headers,浏览器端才能读到会话头恢复流。
+    import uvicorn
+    from starlette.middleware.cors import CORSMiddleware
+
+    mcp.settings.host = args.host
+    mcp.settings.port = args.port
+
+    if args.transport == "streamable-http":
+        app = mcp.streamable_http_app()
+    else:
+        app = mcp.sse_app()
+
+    app = CORSMiddleware(
+        app,
+        allow_origins=["*"],
+        allow_methods=["*"],
+        allow_headers=["*"],
+        expose_headers=["mcp-session-id"],
+    )
+
+    uvicorn.run(app, host=args.host, port=args.port)
 
 
 if __name__ == "__main__":
