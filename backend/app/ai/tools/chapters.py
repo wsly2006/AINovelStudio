@@ -1,12 +1,30 @@
-"""章节工具:列表 / 详情 / 更新。"""
+"""章节工具:列表 / 详情 / 更新 / 生成正文。"""
 
 from __future__ import annotations
+
+import asyncio
+import concurrent.futures
 
 from app.ai.tools.db import with_db
 from app.ai.tools.errors import friendly_errors
 from app.ai.tools.registry import tool
+from app.models.chapter import Chapter
 from app.schemas.chapter import ChapterUpdate
-from app.services import chapter_service, chapter_version_service
+from app.services import chapter_ai_service, chapter_service, chapter_version_service
+
+# 正文预览截断长度 — 避免把上万字灌回 LLM 上下文
+_CONTENT_PREVIEW_LEN = 600
+
+
+def _run_async_blocking(coro):
+    """把协程跑完并返回结果 — 独立线程新建 event loop,和外层 asyncio 隔离。
+
+    MCP HTTP transport 下 FastMCP 在 event loop 里同步调用工具,直接
+    asyncio.run 会抛 "cannot be called from a running event loop"。
+    stdio 模式虽然当前没这个问题,统一走同一条路径以免踩坑。
+    """
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
+        return ex.submit(lambda: asyncio.run(coro)).result()
 
 
 @tool(category="chapters")
@@ -81,3 +99,103 @@ def update_chapter(
 
         # 重新拉取最终状态返回
         return chapter_service.get_chapter(db, chapter_id).model_dump(mode="json")
+
+
+@tool(category="chapters", dangerous=True)
+@friendly_errors
+def generate_chapter_content(
+    chapter_id: int,
+    target_word_count: int | None = None,
+    extra_instruction: str | None = None,
+    character_ids: list[int] | None = None,
+    world_entity_ids: list[int] | None = None,
+    item_ids: list[int] | None = None,
+    save: bool = False,
+) -> dict:
+    """基于工程上下文为指定章节生成正文。同步阻塞,跑完才返回。
+
+    走的是和前端「AI 生成」按钮完全一样的服务层 (chapter_ai_service.stream_generate),
+    因此会自动带上工程简介 / 大纲 / 前序摘要 / 人物档案 / 本章前状态快照 /
+    最近情节 / 世界观 / 进行中任务 / 作者风格 profile。
+
+    参数:
+    - chapter_id: 目标章节 id(必填)
+    - target_word_count: 目标字数。不传就用 project.words_per_chapter(默认 4000)
+    - extra_instruction: 追加到 prompt 的自由指令,如"这一章要引出反派"
+    - character_ids / world_entity_ids / item_ids: 本章会出现的元素,粒度可控
+    - save: True 时把生成结果直接落库到 chapter.content(写前自动快照旧内容
+      到 chapter_versions,最多保留最近 5 条,可回滚)。默认 False —— 只返回
+      生成的正文,由调用方决定要不要再用 update_chapter 落库
+
+    返回 {chapter_id, word_count, content_preview, truncated, saved, content?}。
+    - content_preview: 正文前 600 字,方便快速人工审阅
+    - truncated: 是否被截断
+    - content: 仅在 save=False 时带完整正文(可能上万字);save=True 时不返回全文
+      避免和数据库冗余
+
+    典型用法:
+        # 先看效果,再决定要不要落库
+        r = generate_chapter_content(chapter_id=98, target_word_count=3500)
+        # 满意的话:update_chapter(chapter_id=98, content=r["content"], status="draft")
+
+        # 或者一步到位
+        generate_chapter_content(chapter_id=98, save=True)
+    """
+    # SQLAlchemy Session 非线程安全 — 生成流程要跑在独立线程的 event loop 里,
+    # 所以 session 也必须在那个线程里创建 / 使用 / 关闭。这里只在主线程做参数校验
+    # 需要用到的一次性读取,不把 session 传进 _collect
+    from app.database import SessionLocal
+    from app.services.chapter_service import ChapterNotFoundError
+
+    async def _collect() -> tuple[str, int, bool]:
+        db = SessionLocal()
+        try:
+            chapter_orm = db.get(Chapter, chapter_id)
+            if chapter_orm is None:
+                raise ChapterNotFoundError(chapter_id)
+            resolved = (
+                target_word_count or chapter_orm.project.words_per_chapter or 4000
+            )
+            buf: list[str] = []
+            async for delta in chapter_ai_service.stream_generate(
+                db,
+                chapter_id,
+                target_word_count=resolved,
+                extra_instruction=extra_instruction,
+                character_ids=character_ids,
+                world_entity_ids=world_entity_ids,
+                item_ids=item_ids,
+            ):
+                buf.append(delta)
+            content = "".join(buf)
+
+            saved = False
+            if save and content:
+                chapter_version_service.snapshot(
+                    db, chapter_id, reason="ai_overwrite", commit=False
+                )
+                chapter_service.save_content(db, chapter_id, content)
+                saved = True
+            return content, resolved, saved
+        finally:
+            db.close()
+
+    content, resolved_word_count, saved = _run_async_blocking(_collect())
+
+    preview = content[:_CONTENT_PREVIEW_LEN]
+    truncated = len(content) > _CONTENT_PREVIEW_LEN
+    if truncated:
+        preview += "…"
+
+    out: dict = {
+        "chapter_id": chapter_id,
+        "target_word_count": resolved_word_count,
+        "word_count": len(content),
+        "content_preview": preview,
+        "truncated": truncated,
+        "saved": saved,
+    }
+    if not saved:
+        # 未落库才回传完整正文,让调用方能审后再 update_chapter
+        out["content"] = content
+    return out
