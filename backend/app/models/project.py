@@ -60,6 +60,11 @@ class Project(Base):
     # 例:Webnovel 风短句、对白多、师父译 Master、修真术语保留拼音 + 首次出现加注释。
     translation_style_guide: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    # 作品整体文风:自然语言描述,作为「目标风格」注入 生成/续写/改写/文风检查/评分。
+    # 与 translation_style_guide 语义不同——那个只作用于翻译,这个作用于中文创作全链路。
+    # 与 AuthorVoiceProfile 也不同——那个是「作者本人语癖」,这个是「这部作品要写成什么样」。
+    writing_style: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), nullable=False
     )

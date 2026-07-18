@@ -71,6 +71,40 @@ def _synopsis_context(project: Project) -> str:
     return f"故事总纲(贯穿全书的走向与结局,本章不应偏离此主线):\n{text}"
 
 
+def _writing_style_context(project: Project | None) -> str:
+    """作品目标文风块。作用于生成 / 续写 / 改写:告诉模型往哪个方向写。
+
+    留空则整块消失(prompt 里的占位符渲染成空字符串)。
+    getattr 兜底旧测试用 SimpleNamespace 造的假 project(没有此字段)。
+    """
+    if project is None:
+        return ""
+    text = (getattr(project, "writing_style", None) or "").strip()
+    if not text:
+        return ""
+    return (
+        "作品整体文风(硬约束,与本章大纲同级;正文的句式、节奏、用词都必须朝这个方向靠):\n"
+        f"{text}"
+    )
+
+
+def _writing_style_reference(project: Project | None) -> str:
+    """作品目标文风参照块。作用于文风检查 / 评分:作为"评价基准"而非"生成方向"。
+
+    style_check 会把偏离目标风格的段落也当作问题挑出来;
+    score 的「文笔」维度按目标风格档次评。留空则退回通用检查 / 通用评分。
+    """
+    if project is None:
+        return ""
+    text = (getattr(project, "writing_style", None) or "").strip()
+    if not text:
+        return ""
+    return (
+        "作品目标文风(评价基准,凡明显偏离此风格的段落也应纳入判断):\n"
+        f"{text}"
+    )
+
+
 _THREAD_STATUS_LABEL = {
     "planning": "规划中",
     "active": "进行中",
@@ -295,6 +329,7 @@ def build_generate_messages(
     values = {
         "project_info": _project_context(project),
         "synopsis_block": _synopsis_context(project),
+        "writing_style_block": _writing_style_context(project),
         "threads_block": _threads_context(plot_threads or []),
         "previous_summary": _previous_chapters_context(previous, chapter.id),
         "chapter_summary_block": _chapter_summary_block(chapter),
@@ -331,6 +366,7 @@ def build_continue_messages(
     values = {
         "project_info": _project_context(project),
         "synopsis_block": _synopsis_context(project),
+        "writing_style_block": _writing_style_context(project),
         "threads_block": _threads_context(plot_threads or []),
         "previous_summary": _previous_chapters_context(previous, chapter.id),
         "chapter_summary_block": _chapter_summary_block(chapter),
@@ -362,6 +398,7 @@ def build_rewrite_messages(
     values = {
         "project_info_block": project_info_block,
         "synopsis_block": synopsis_block,
+        "writing_style_block": _writing_style_context(project),
         "threads_block": _threads_context(plot_threads or []),
         "characters_block": _characters_context(characters or []),
         "instruction": instruction.strip(),
@@ -448,6 +485,7 @@ def build_score_messages(
 ) -> list[dict]:
     values = {
         "project_info": _project_context(project),
+        "writing_style_block": _writing_style_reference(project),
         "chapter_label": _chapter_label(chapter),
         "chapter_content": chapter.content or "",
     }
@@ -462,6 +500,7 @@ def build_style_check_messages(
 ) -> list[dict]:
     values = {
         "project_info": _project_context(project),
+        "writing_style_block": _writing_style_reference(project),
         "chapter_label": _chapter_label(chapter),
         "chapter_content": chapter.content or "",
     }

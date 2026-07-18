@@ -135,6 +135,8 @@ def create_project(db: Session, payload: ProjectCreate) -> ProjectRead:
         keywords=list(payload.keywords or []),
         categories=list(payload.categories or []),
         target_platform_codes=list(payload.target_platform_codes or []),
+        translation_style_guide=payload.translation_style_guide,
+        writing_style=payload.writing_style,
     )
     db.add(p)
     try:

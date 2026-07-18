@@ -56,6 +56,8 @@ def export_to_dict(db: Session, project_id: int) -> dict:
             "keywords": list(p.keywords or []),
             "categories": list(p.categories or []),
             "target_platform_codes": list(p.target_platform_codes or []),
+            "translation_style_guide": p.translation_style_guide,
+            "writing_style": p.writing_style,
         },
         "ladders": [
             {
@@ -235,6 +237,8 @@ def import_from_dict(db: Session, data: dict, *, name_override: str | None = Non
         keywords=list(proj_data.get("keywords") or []),
         categories=list(proj_data.get("categories") or []),
         target_platform_codes=list(proj_data.get("target_platform_codes") or []),
+        translation_style_guide=proj_data.get("translation_style_guide"),
+        writing_style=proj_data.get("writing_style"),
     )
     db.add(project)
     db.flush()  # 拿到 project.id

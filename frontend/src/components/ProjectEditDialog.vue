@@ -34,6 +34,11 @@ const TAG_PRESETS = [
   'schoolLife', 'workplace', 'detective', 'horror',
 ]
 
+const WRITING_STYLE_PRESETS = [
+  'plain', 'ornate', 'impressionistic', 'coldNarrative', 'lyrical',
+  'guLong', 'jinYong', 'minimalist', 'webNovel', 'streamOfConsciousness',
+]
+
 const genreOptions = computed(() =>
   GENRE_KEYS.map((key) => ({ key, label: t(`genre.${key}`) }))
 )
@@ -47,6 +52,7 @@ const form = ref({
   tags: [],
   cover_color: COLORS[0],
   words_per_chapter: 4000,
+  writing_style: '',
 })
 const formRef = ref(null)
 const submitting = ref(false)
@@ -73,6 +79,7 @@ watch(
       tags: Array.isArray(project.tags) ? project.tags.slice() : [],
       cover_color: project.cover_color || COLORS[0],
       words_per_chapter: project.words_per_chapter || 4000,
+      writing_style: project.writing_style || '',
     }
     titleCandidates.value = []
   },
@@ -119,6 +126,10 @@ function pickTitle(title) {
   titleCandidates.value = []
 }
 
+function pickWritingStylePreset(key) {
+  form.value.writing_style = t(`writingStylePresets.${key}.text`)
+}
+
 async function onSuggestDescription() {
   if (descSuggesting.value) return
   descSuggesting.value = true
@@ -152,6 +163,7 @@ async function onSubmit() {
         tags: form.value.tags,
         cover_color: form.value.cover_color,
         words_per_chapter: Number(form.value.words_per_chapter) || 4000,
+        writing_style: form.value.writing_style?.trim() || null,
       }
       const updated = await projectsApi.update(props.project.id, payload)
       ElMessage.success(t('common.success'))
@@ -243,6 +255,34 @@ async function onSubmit() {
           resize="vertical"
         />
         <div class="hint">{{ t('projectEdit.synopsisHint') }}</div>
+      </el-form-item>
+
+      <el-form-item :label="t('projectDialog.writingStyleLabel')">
+        <div class="writing-style-block">
+          <div class="style-preset-grid">
+            <el-tag
+              v-for="key in WRITING_STYLE_PRESETS"
+              :key="key"
+              type="info"
+              effect="plain"
+              class="style-chip"
+              @click="pickWritingStylePreset(key)"
+            >
+              {{ t(`writingStylePresets.${key}.label`) }}
+            </el-tag>
+          </div>
+          <div class="hint">{{ t('projectDialog.writingStylePresetHint') }}</div>
+          <el-input
+            v-model="form.writing_style"
+            type="textarea"
+            :autosize="{ minRows: 3, maxRows: 8 }"
+            :placeholder="t('projectDialog.writingStylePlaceholder')"
+            maxlength="4000"
+            show-word-limit
+            resize="vertical"
+          />
+          <div class="hint">{{ t('projectDialog.writingStyleHint') }}</div>
+        </div>
       </el-form-item>
 
       <el-form-item :label="t('projectDialog.channelLabel')">
@@ -408,5 +448,22 @@ async function onSubmit() {
 .ai-scale-unit {
   font-size: 13px;
   color: #5b6471;
+}
+.writing-style-block {
+  width: 100%;
+}
+.style-preset-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.style-chip {
+  cursor: pointer;
+  user-select: none;
+}
+.style-chip:hover {
+  background: #ecf5ff;
+  color: #4080ff;
 }
 </style>

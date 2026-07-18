@@ -40,6 +40,8 @@ _GEN_USER = """工程信息:{{project_info}}
 
 {{synopsis_block}}
 
+{{writing_style_block}}
+
 {{threads_block}}
 
 前序章节大纲:
@@ -69,6 +71,8 @@ _GEN_USER = """工程信息:{{project_info}}
 _CONT_USER = """工程信息:{{project_info}}
 
 {{synopsis_block}}
+
+{{writing_style_block}}
 
 {{threads_block}}
 
@@ -102,6 +106,8 @@ _CONT_USER = """工程信息:{{project_info}}
 _REWRITE_USER = """{{project_info_block}}
 
 {{synopsis_block}}
+
+{{writing_style_block}}
 
 {{threads_block}}
 
@@ -143,6 +149,8 @@ _SCORE_USER = """请评估下面这一章。
 工程信息:{{project_info}}
 章节标题:{{chapter_label}}
 
+{{writing_style_block}}
+
 正文:
 ---
 {{chapter_content}}
@@ -150,6 +158,7 @@ _SCORE_USER = """请评估下面这一章。
 
 按以下 4 个维度打分,每项 1-10 的整数(1=很差,5=平庸,7=合格,9=出色,10=极佳),
 然后给出 200~400 字的中文整体反馈,指出本章的亮点与可以改进的地方。
+若上方给出「作品目标文风」,请把「与目标文风的贴合度」作为 writing(文笔)维度的核心权重之一,并在反馈里指出主要偏离点。
 
 维度释义:
 - writing(文笔):语言流畅度、画面感、节奏与张力
@@ -182,6 +191,8 @@ _STYLE_CHECK_USER = """请审读下面这一章,挑出读起来「像 AI 写的�
 工程信息:{{project_info}}
 章节标题:{{chapter_label}}
 
+{{writing_style_block}}
+
 正文:
 ---
 {{chapter_content}}
@@ -191,8 +202,8 @@ _STYLE_CHECK_USER = """请审读下面这一章,挑出读起来「像 AI 写的�
 - quote 必须是从正文中**逐字摘抄**的连续片段(不要改字、不要合并标点),长度 30~120 字
 - 只挑确实有问题的段落,宁缺毋滥;若全章都过关,issues 返回空数组
 - kind 用以下标签之一:套语 / 排比堆砌 / 辞藻冗余 / 模板结构 / 对话同质 / 视角抽离 / 其他
-- why:20-50 字解释为什么读起来像 AI
-- suggestion:20-50 字给出重写方向(怎么改更像人写)
+- why:20-50 字解释为什么读起来像 AI(若给出「作品目标文风」,明显偏离目标文风的段落也应视作问题,并在 why 中指明)
+- suggestion:20-50 字给出重写方向(怎么改更像人写、或如何贴回目标文风)
 - summary:一两句话(60-150 字)总评本章 AI 味的总体观感
 
 输出 JSON,严格遵循以下结构:
@@ -774,7 +785,8 @@ PROMPTS: tuple[PromptDef, ...] = (
         default_system=_WRITING_SYSTEM,
         default_user=_GEN_USER,
         placeholders=(
-            "project_info", "synopsis_block", "threads_block",
+            "project_info", "synopsis_block", "writing_style_block",
+            "threads_block",
             "previous_summary", "chapter_summary_block",
             "characters_block", "world_block",
             "items_block", "events_block", "tasks_block", "beats_block",
@@ -789,7 +801,8 @@ PROMPTS: tuple[PromptDef, ...] = (
         default_system=_WRITING_SYSTEM,
         default_user=_CONT_USER,
         placeholders=(
-            "project_info", "synopsis_block", "threads_block",
+            "project_info", "synopsis_block", "writing_style_block",
+            "threads_block",
             "previous_summary", "chapter_summary_block",
             "characters_block", "world_block",
             "items_block", "events_block", "tasks_block", "chapter_label",
@@ -804,7 +817,8 @@ PROMPTS: tuple[PromptDef, ...] = (
         default_system=_WRITING_SYSTEM,
         default_user=_REWRITE_USER,
         placeholders=(
-            "project_info_block", "synopsis_block", "threads_block",
+            "project_info_block", "synopsis_block", "writing_style_block",
+            "threads_block",
             "characters_block", "instruction", "selection",
         ),
     ),
@@ -846,7 +860,10 @@ PROMPTS: tuple[PromptDef, ...] = (
         description="对单章打分(文笔/情节/人物/综合 4 维),并给出 200~400 字反馈。",
         default_system=_SCORE_SYSTEM,
         default_user=_SCORE_USER,
-        placeholders=("project_info", "chapter_label", "chapter_content"),
+        placeholders=(
+            "project_info", "writing_style_block",
+            "chapter_label", "chapter_content",
+        ),
     ),
     PromptDef(
         key="chapter.style_check",
@@ -855,7 +872,10 @@ PROMPTS: tuple[PromptDef, ...] = (
         description="挑出本章读起来「像 AI 写」的段落,给出原文片段、问题与重写方向。",
         default_system=_STYLE_CHECK_SYSTEM,
         default_user=_STYLE_CHECK_USER,
-        placeholders=("project_info", "chapter_label", "chapter_content"),
+        placeholders=(
+            "project_info", "writing_style_block",
+            "chapter_label", "chapter_content",
+        ),
     ),
     PromptDef(
         key="outline.suggest_batch",

@@ -34,6 +34,12 @@ const TAG_PRESETS = [
   'schoolLife', 'workplace', 'detective', 'horror',
 ]
 
+// 文风预设 key,顺序即按钮显示顺序;文案与详细描述在 i18n writingStylePresets.* 下
+const WRITING_STYLE_PRESETS = [
+  'plain', 'ornate', 'impressionistic', 'coldNarrative', 'lyrical',
+  'guLong', 'jinYong', 'minimalist', 'webNovel', 'streamOfConsciousness',
+]
+
 const PROGRESSION_GENRES = ['xianxia', 'wuxia', 'fantasy', 'eastern_fantasy']
 const PROGRESSION_TAGS = ['esper', 'apocalypse', 'evolution', 'cultivation', 'martial', 'mecha']
 
@@ -72,6 +78,7 @@ const form = ref({
   progression_system: '',
   target_word_count: 80000,
   words_per_chapter: 4000,
+  writing_style: '',
 })
 const formRef = ref(null)
 const submitting = ref(false)
@@ -115,6 +122,7 @@ watch(
         progression_system: '',
         target_word_count: 80000,
         words_per_chapter: 4000,
+        writing_style: '',
       }
       novelFile.value = null
       detectResult.value = null
@@ -186,6 +194,11 @@ async function onSuggestTitle() {
 function pickTitle(title) {
   form.value.name = title
   titleCandidates.value = []
+}
+
+function pickWritingStylePreset(key) {
+  const text = t(`writingStylePresets.${key}.text`)
+  form.value.writing_style = text
 }
 
 async function onSuggestDescription() {
@@ -285,6 +298,7 @@ function buildAIPayload() {
     tags: form.value.tags,
     cover_color: form.value.cover_color,
     words_per_chapter: Number(form.value.words_per_chapter) || 4000,
+    writing_style: form.value.writing_style?.trim() || null,
   }
   if (showProgression.value) {
     project.progression_system = form.value.progression_system
@@ -309,6 +323,8 @@ async function submitWithNovel() {
     fd.append('progression_system', form.value.progression_system)
   }
   fd.append('words_per_chapter', String(Number(form.value.words_per_chapter) || 4000))
+  const ws = form.value.writing_style?.trim()
+  if (ws) fd.append('writing_style', ws)
 
   const resp = await fetch('/api/projects/import-novel', { method: 'POST', body: fd })
   if (!resp.ok) {
@@ -471,6 +487,34 @@ async function submitWithNovel() {
             </el-tag>
           </div>
           <div class="hint">{{ t('projectDialog.tagsHint') }}</div>
+        </div>
+      </el-form-item>
+
+      <el-form-item :label="t('projectDialog.writingStyleLabel')">
+        <div class="writing-style-block">
+          <div class="style-preset-grid">
+            <el-tag
+              v-for="key in WRITING_STYLE_PRESETS"
+              :key="key"
+              type="info"
+              effect="plain"
+              class="style-chip"
+              @click="pickWritingStylePreset(key)"
+            >
+              {{ t(`writingStylePresets.${key}.label`) }}
+            </el-tag>
+          </div>
+          <div class="hint">{{ t('projectDialog.writingStylePresetHint') }}</div>
+          <el-input
+            v-model="form.writing_style"
+            type="textarea"
+            :autosize="{ minRows: 3, maxRows: 8 }"
+            :placeholder="t('projectDialog.writingStylePlaceholder')"
+            maxlength="4000"
+            show-word-limit
+            resize="vertical"
+          />
+          <div class="hint">{{ t('projectDialog.writingStyleHint') }}</div>
         </div>
       </el-form-item>
 
@@ -747,5 +791,22 @@ async function submitWithNovel() {
   font-size: 14px;
   font-weight: 600;
   color: #1f2329;
+}
+.writing-style-block {
+  width: 100%;
+}
+.style-preset-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.style-chip {
+  cursor: pointer;
+  user-select: none;
+}
+.style-chip:hover {
+  background: #ecf5ff;
+  color: #4080ff;
 }
 </style>

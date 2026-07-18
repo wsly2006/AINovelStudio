@@ -232,6 +232,7 @@ async def import_novel(
     cover_color: str | None = Form(default=None),
     progression_system: str | None = Form(default=None),
     words_per_chapter: int = Form(default=4000),
+    writing_style: str | None = Form(default=None),
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
 ) -> dict:
@@ -262,6 +263,7 @@ async def import_novel(
         cover_color=cover_color,
         progression_system=progression_system,
         words_per_chapter=words_per_chapter,
+        writing_style=writing_style,
     )
     try:
         project_read = project_service.create_project(db, payload)
