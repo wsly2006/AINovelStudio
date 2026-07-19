@@ -20,6 +20,10 @@ from app.services.chapter_version_service import ChapterVersionNotFoundError
 from app.services.character_service import CharacterNotFoundError, ProjectNotFoundForCharacterError
 from app.services.item_service import ItemNotFoundError, ProjectNotFoundForItemError
 from app.services.plot_service import PlotEventNotFoundError
+from app.services.outline_service import (
+    OutlineParseError,
+    ProjectNotFoundForOutlineError,
+)
 from app.services.project_service import ProjectNotFoundError
 from app.services.relation_service import RelationNotFoundError
 from app.services.task_service import TaskNotFoundError
@@ -54,6 +58,7 @@ def friendly_errors(fn: F) -> F:
             ProjectNotFoundForChapterError,
             ProjectNotFoundForCharacterError,
             ProjectNotFoundForItemError,
+            ProjectNotFoundForOutlineError,
             ProjectNotFoundForWorldError,
         ) as e:
             raise ValueError(
@@ -106,6 +111,11 @@ def friendly_errors(fn: F) -> F:
         except ProjectNotFoundForConsistencyError as e:
             raise ValueError(
                 f"工程 #{e.args[0]} 不存在。先调用 list_projects 确认可用的工程 id。"
+            ) from e
+        except OutlineParseError as e:
+            raise ValueError(
+                f"AI 大纲输出无法解析:{e}。可以重试或改用 update_chapter_outline "
+                f"逐章手写大纲。"
             ) from e
 
     return wrapper  # type: ignore[return-value]

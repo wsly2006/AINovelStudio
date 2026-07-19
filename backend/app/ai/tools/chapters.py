@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import asyncio
-import concurrent.futures
-
+from app.ai.tools.async_util import run_async_blocking
 from app.ai.tools.db import with_db
 from app.ai.tools.errors import friendly_errors
 from app.ai.tools.registry import tool
@@ -14,17 +12,6 @@ from app.services import chapter_ai_service, chapter_service, chapter_version_se
 
 # 正文预览截断长度 — 避免把上万字灌回 LLM 上下文
 _CONTENT_PREVIEW_LEN = 600
-
-
-def _run_async_blocking(coro):
-    """把协程跑完并返回结果 — 独立线程新建 event loop,和外层 asyncio 隔离。
-
-    MCP HTTP transport 下 FastMCP 在 event loop 里同步调用工具,直接
-    asyncio.run 会抛 "cannot be called from a running event loop"。
-    stdio 模式虽然当前没这个问题,统一走同一条路径以免踩坑。
-    """
-    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
-        return ex.submit(lambda: asyncio.run(coro)).result()
 
 
 @tool(category="chapters")
@@ -180,7 +167,7 @@ def generate_chapter_content(
         finally:
             db.close()
 
-    content, resolved_word_count, saved = _run_async_blocking(_collect())
+    content, resolved_word_count, saved = run_async_blocking(_collect())
 
     preview = content[:_CONTENT_PREVIEW_LEN]
     truncated = len(content) > _CONTENT_PREVIEW_LEN
