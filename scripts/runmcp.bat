@@ -11,6 +11,10 @@ setlocal
 set ROOT=%~dp0..
 cd /d "%ROOT%"
 
+rem Enable write-capable MCP tools (update_*, generate_chapter_content, ...).
+rem Comment out to run the server in read-only mode.
+set AI_NOVEL_MCP_ENABLE_WRITES=true
+
 set MCP_PORT=%1
 if "%MCP_PORT%"=="" set MCP_PORT=11889
 set MCP_TRANSPORT=%2

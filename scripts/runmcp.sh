@@ -15,6 +15,10 @@ MCP_PORT="${1:-11889}"
 MCP_TRANSPORT="${2:-streamable-http}"
 MCP_HOST="${3:-127.0.0.1}"
 
+# Enable write-capable MCP tools (update_*, generate_chapter_content, ...).
+# Comment out to run the server in read-only mode.
+export AI_NOVEL_MCP_ENABLE_WRITES=true
+
 command -v uv >/dev/null 2>&1 || { echo "Missing command: uv"; exit 1; }
 
 if [ ! -d "backend/.venv" ]; then
