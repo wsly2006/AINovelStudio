@@ -1,5 +1,7 @@
 # AI Novel Writer
 
+**中文** | [English](README.en.md)
+
 本地优先的 AI 辅助小说创作工具。把写作、人物档案、情节脉络、AI 生成统一在一个工作区里,数据存在本地 SQLite,API key 自带 — 完全可控。
 
 ## 特性
