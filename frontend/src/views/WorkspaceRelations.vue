@@ -61,7 +61,7 @@ function openEdit(r) {
 
 async function onSubmit() {
   if (!form.value.from_id || !form.value.to_id || !form.value.type.trim()) {
-    ElMessage.warning('请填写完整')
+    ElMessage.warning(t('common.fillRequired'))
     return
   }
   try {

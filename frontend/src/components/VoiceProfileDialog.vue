@@ -1,5 +1,6 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Delete, Plus } from '@element-plus/icons-vue'
 import { voiceProfileApi } from '../api/voiceProfile'
@@ -9,6 +10,8 @@ const props = defineProps({
   projectId: { type: Number, default: null },
 })
 const emit = defineEmits(['update:modelValue', 'saved'])
+
+const { t } = useI18n()
 
 const QUIRK_PRESETS = [
   '段落末尾常用半句留白,而非完整收束',
@@ -207,8 +210,8 @@ function close() {
 
       <section class="section">
         <div class="section-head">
-          <span class="section-title">语癖 ({{ profile.quirks.length }} / 30)</span>
-          <span class="section-hint">短句清单形式。AI 会拿来当"个人标签"穿插进文本</span>
+          <span class="section-title">{{ t('voiceDialog.quirksTitle', { n: profile.quirks.length }) }}</span>
+          <span class="section-hint">{{ t('voiceDialog.quirksHint') }}</span>
         </div>
         <div class="quirk-input-row">
           <el-input
@@ -228,10 +231,10 @@ function close() {
             <el-button text size="small" :icon="Delete" class="quirk-del" @click="removeQuirk(i)" />
           </div>
         </div>
-        <div v-else class="quirk-empty">还没添加语癖,可以从下面预设里挑几条起步 ↓</div>
+        <div v-else class="quirk-empty">{{ t('voiceDialog.quirkEmpty') }}</div>
 
         <div class="presets-row">
-          <span class="presets-label">快速添加:</span>
+          <span class="presets-label">{{ t('voiceDialog.quickAdd') }}</span>
           <el-button
             v-for="p in QUIRK_PRESETS"
             :key="p"
@@ -247,8 +250,8 @@ function close() {
 
       <section class="section">
         <div class="section-head">
-          <span class="section-title">风格描述</span>
-          <span class="section-hint">整段写,描述节奏 / 句法 / 视角偏好等</span>
+          <span class="section-title">{{ t('voiceDialog.styleTitle') }}</span>
+          <span class="section-hint">{{ t('voiceDialog.styleHint') }}</span>
         </div>
         <el-input
           v-model="profile.style_notes"
@@ -260,7 +263,7 @@ function close() {
         />
         <div class="char-meta">{{ charCount }} / 4000</div>
         <div class="presets-row">
-          <span class="presets-label">风格预设:</span>
+          <span class="presets-label">{{ t('voiceDialog.stylePresets') }}</span>
           <el-button
             v-for="p in STYLE_PRESETS"
             :key="p.label"
@@ -275,9 +278,9 @@ function close() {
     </div>
 
     <template #footer>
-      <el-button v-if="hasContent" type="danger" link @click="onClear">清空整份档案</el-button>
+      <el-button v-if="hasContent" type="danger" link @click="onClear">{{ t('voiceDialog.clearAll') }}</el-button>
       <span class="spacer" />
-      <el-button @click="close">取消</el-button>
+      <el-button @click="close">{{ t('voiceDialog.btnCancel') }}</el-button>
       <el-button type="primary" :loading="saving" :disabled="!dirty" @click="save">
         保存
       </el-button>

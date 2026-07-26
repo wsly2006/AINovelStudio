@@ -94,18 +94,28 @@ const groupedEvents = computed(() => {
     .sort((a, b) => (a.chapter.order_index || 0) - (b.chapter.order_index || 0))
 })
 
-const STATE_KIND_META = {
-  tier_up: { label: '境界提升', color: '#fa8c16' },
-  tier_down: { label: '境界下降', color: '#86909c' },
-  location_change: { label: '前往', color: '#13c2c2' },
-  item_acquired: { label: '获得', color: '#52c41a' },
-  item_lost: { label: '失去', color: '#ff7875' },
-  injury: { label: '负伤', color: '#f5222d' },
-  other: { label: '其他', color: '#bfbfbf' },
+const STATE_KIND_KEY = {
+  tier_up: 'plotExtra.stateKindTierUp',
+  tier_down: 'plotExtra.stateKindTierDown',
+  location_change: 'plotExtra.stateKindLocationChange',
+  item_acquired: 'plotExtra.stateKindItemAcquired',
+  item_lost: 'plotExtra.stateKindItemLost',
+  injury: 'plotExtra.stateKindInjury',
+  other: 'plotExtra.stateKindOther',
+}
+const STATE_KIND_COLOR = {
+  tier_up: '#fa8c16',
+  tier_down: '#86909c',
+  location_change: '#13c2c2',
+  item_acquired: '#52c41a',
+  item_lost: '#ff7875',
+  injury: '#f5222d',
+  other: '#bfbfbf',
 }
 
 function describeStateEvent(se) {
-  const meta = STATE_KIND_META[se.kind] || STATE_KIND_META.other
+  const kindKey = STATE_KIND_KEY[se.kind] || STATE_KIND_KEY.other
+  const color = STATE_KIND_COLOR[se.kind] || STATE_KIND_COLOR.other
   const charName = charById.value[se.character_id]?.name || `#${se.character_id}`
   const p = se.payload || {}
   let detail = ''
@@ -119,7 +129,7 @@ function describeStateEvent(se) {
         typeof idx === 'number' && tiers[idx]
           ? tiers[idx]
           : typeof idx === 'number'
-          ? `第 ${idx + 1} 阶`
+          ? t('formats.tierIndex', { n: idx + 1 })
           : ''
       break
     }
@@ -141,7 +151,7 @@ function describeStateEvent(se) {
       detail = p.note || ''
       break
   }
-  return { charName, label: meta.label, color: meta.color, detail }
+  return { charName, label: t(kindKey), color, detail }
 }
 
 async function loadAll() {
@@ -195,7 +205,7 @@ function openEdit(ev) {
 
 async function onSubmit() {
   if (!form.value.title.trim() || !form.value.chapter_id) {
-    ElMessage.warning('请填写完整')
+    ElMessage.warning(t('common.fillRequired'))
     return
   }
   try {
@@ -299,7 +309,7 @@ async function onIssueStatus(iss, status) {
 
 async function onIssueDelete(iss) {
   try {
-    await ElMessageBox.confirm('删除这条记录?此操作不可撤销。', '删除', {
+    await ElMessageBox.confirm(t('plot.issueDeleteConfirm'), t('plot.issueDeleteTitle'), {
       type: 'warning',
       confirmButtonText: t('common.delete'),
       cancelButtonText: t('common.cancel'),
@@ -332,7 +342,7 @@ function nameOf(id) {
     <header class="header">
       <span class="title">
         {{ t('plot.pageTitle') }} ({{ events.length }})
-        <span v-if="openIssueCount > 0" class="open-issue-pill" :title="`${openIssueCount} 个未解决问题`">
+        <span v-if="openIssueCount > 0" class="open-issue-pill" :title="t('plot.issueOpenCount', { n: openIssueCount })">
           ⚠ {{ openIssueCount }}
         </span>
       </span>
@@ -362,17 +372,17 @@ function nameOf(id) {
     <div v-if="issues.length" class="issues">
       <div class="issues-head">
         <span class="issues-title">
-          一致性问题(共 {{ issues.length }},未解决 {{ openIssueCount }})
+          {{ t('plot.issueTitle', { total: issues.length, open: openIssueCount }) }}
         </span>
         <el-radio-group v-model="issuesStatusFilter" size="small">
-          <el-radio-button value="open">未解决</el-radio-button>
-          <el-radio-button value="resolved">已修</el-radio-button>
-          <el-radio-button value="dismissed">已忽略</el-radio-button>
-          <el-radio-button value="all">全部</el-radio-button>
+          <el-radio-button value="open">{{ t('plot.issueFilterOpen') }}</el-radio-button>
+          <el-radio-button value="resolved">{{ t('plot.issueFilterResolved') }}</el-radio-button>
+          <el-radio-button value="dismissed">{{ t('plot.issueFilterDismissed') }}</el-radio-button>
+          <el-radio-button value="all">{{ t('plot.issueFilterAll') }}</el-radio-button>
         </el-radio-group>
       </div>
       <div v-if="filteredIssues.length === 0" class="issue-empty">
-        当前过滤下没有记录
+        {{ t('plot.issueEmpty') }}
       </div>
       <div v-for="iss in filteredIssues" :key="iss.id" class="issue" :class="`issue-${iss.status}`">
         <div class="issue-head">
@@ -386,7 +396,7 @@ function nameOf(id) {
               type="success"
               @click="onIssueStatus(iss, 'resolved')"
             >
-              已修
+              {{ t('plot.issueBtnResolved') }}
             </el-button>
             <el-button
               v-if="iss.status !== 'dismissed'"
@@ -394,7 +404,7 @@ function nameOf(id) {
               size="small"
               @click="onIssueStatus(iss, 'dismissed')"
             >
-              忽略
+              {{ t('plot.issueBtnIgnore') }}
             </el-button>
             <el-button
               v-if="iss.status !== 'open'"
@@ -403,9 +413,9 @@ function nameOf(id) {
               type="warning"
               @click="onIssueStatus(iss, 'open')"
             >
-              重开
+              {{ t('plot.issueBtnReopen') }}
             </el-button>
-            <el-button text size="small" type="danger" @click="onIssueDelete(iss)">删</el-button>
+            <el-button text size="small" type="danger" @click="onIssueDelete(iss)">{{ t('plot.issueBtnDelete') }}</el-button>
           </span>
         </div>
         <div v-if="iss.detail" class="issue-detail">{{ iss.detail }}</div>
@@ -427,9 +437,9 @@ function nameOf(id) {
           <span class="dot" />
           <span class="chap-title">
             <template v-if="(grp.chapter.title || '').trim()">
-              第 {{ grp.chapter.order_index }} 章 《{{ grp.chapter.title }}》
+              {{ t('formats.chapterBookOf', { n: grp.chapter.order_index, title: grp.chapter.title }) }}
             </template>
-            <template v-else>第 {{ grp.chapter.order_index }} 章</template>
+            <template v-else>{{ t('formats.chapterOrder', { n: grp.chapter.order_index }) }}</template>
           </span>
         </div>
         <div class="events">
@@ -444,7 +454,7 @@ function nameOf(id) {
               <span
                 v-if="ev.thread_id != null && threadById[ev.thread_id]"
                 class="ev-thread"
-                :title="`推进:${threadById[ev.thread_id].title}`"
+                :title="t('plot.threadPush', { name: threadById[ev.thread_id].title })"
               >
                 {{ threadById[ev.thread_id].title }}
               </span>
@@ -472,7 +482,7 @@ function nameOf(id) {
 
         <!-- 人物状态变化:本章发生的所有 state events -->
         <div v-if="grp.stateEvents.length > 0" class="state-lane">
-          <div class="lane-title">本章人物变化</div>
+          <div class="lane-title">{{ t('plotExtra.stateLaneTitle') }}</div>
           <div class="lane-items">
             <div
               v-for="se in grp.stateEvents"
@@ -513,7 +523,7 @@ function nameOf(id) {
               v-for="c in workspace.chapters"
               :key="c.id"
               :value="c.id"
-              :label="(c.title || '').trim() ? `第 ${c.order_index} 章 ${c.title}` : `第 ${c.order_index} 章`"
+              :label="(c.title || '').trim() ? t('formats.chapterOrderWithTitle', { n: c.order_index, title: c.title }) : t('formats.chapterOrder', { n: c.order_index })"
             />
           </el-select>
         </el-form-item>
@@ -531,12 +541,12 @@ function nameOf(id) {
             <el-option v-for="c in charsStore.items" :key="c.id" :value="c.id" :label="c.name" />
           </el-select>
         </el-form-item>
-        <el-form-item v-if="threads.length" label="推进主线">
+        <el-form-item v-if="threads.length" :label="t('plot.threadLabel')">
           <el-select
             v-model="form.thread_id"
             clearable
             filterable
-            placeholder="可选,本事件推进哪条主线"
+            :placeholder="t('plot.threadPlaceholder')"
             style="width: 100%"
           >
             <el-option

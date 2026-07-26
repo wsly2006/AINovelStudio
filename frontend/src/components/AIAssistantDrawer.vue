@@ -102,7 +102,7 @@ async function onRename(conv) {
     return
   }
   try {
-    await assistant.renameConversation(conv.id, title || '新对话')
+    await assistant.renameConversation(conv.id, title || t('assistant.newConversationDefault'))
   } catch (e) {
     ElMessage.error(e.message || t('assistant.error'))
   }
@@ -160,7 +160,7 @@ async function copyText(text) {
     await navigator.clipboard.writeText(text)
     ElMessage.success(t('assistant.copied'))
   } catch {
-    ElMessage.warning('复制失败,请手动选择')
+    ElMessage.warning(t('assistant.copyFailed'))
   }
 }
 
@@ -245,7 +245,7 @@ function onKeydown(e) {
             :class="m.role"
           >
             <div class="msg-role">
-              {{ m.role === 'user' ? '我' : 'AI' }}
+              {{ m.role === 'user' ? t('assistant.roleUser') : t('assistant.roleAI') }}
             </div>
             <div class="msg-body">
               <div v-if="m.selection_text" class="msg-selection">

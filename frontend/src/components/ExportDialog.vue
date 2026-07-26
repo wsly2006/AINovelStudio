@@ -203,7 +203,7 @@ function close() {
       <section class="step">
         <div class="step-title">1. 选择目标平台</div>
         <div v-if="groupedPlatforms.global.length" class="group">
-          <div class="group-title">海外</div>
+          <div class="group-title">{{ t('exportDialog.groupGlobal') }}</div>
           <div class="grid">
             <button
               v-for="p in groupedPlatforms.global"
@@ -218,7 +218,7 @@ function close() {
           </div>
         </div>
         <div v-if="groupedPlatforms.cn.length" class="group">
-          <div class="group-title">国内</div>
+          <div class="group-title">{{ t('exportDialog.groupCN') }}</div>
           <div class="grid">
             <button
               v-for="p in groupedPlatforms.cn"
@@ -233,7 +233,7 @@ function close() {
           </div>
         </div>
         <div v-if="groupedPlatforms.other.length" class="group">
-          <div class="group-title">通用</div>
+          <div class="group-title">{{ t('exportDialog.groupOther') }}</div>
           <div class="grid">
             <button
               v-for="p in groupedPlatforms.other"
@@ -302,7 +302,7 @@ function close() {
 
         <!-- 元数据状态 -->
         <div v-if="selected.metadata_schema?.length" class="meta-status">
-          <div class="meta-status-title">该平台需要的元数据</div>
+          <div class="meta-status-title">{{ t('exportDialog.metaStatusTitle') }}</div>
           <div v-if="missingFields.length" class="meta-missing">
             <el-icon class="warning-icon"><Warning /></el-icon>
             <div class="meta-missing-body">
@@ -328,7 +328,7 @@ function close() {
     </div>
 
     <template #footer>
-      <el-button @click="close">取消</el-button>
+      <el-button @click="close">{{ t('exportDialog.btnCancel') }}</el-button>
       <el-button
         type="primary"
         :icon="Download"

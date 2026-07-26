@@ -21,52 +21,52 @@ const disabled = computed(() => !info.configured)
 
 <template>
   <div class="ai-toolbar">
-    <el-tooltip content="整章 AI 生成,自动注入总纲/主线/节拍/人物/世界观" placement="top" :show-after="300">
+    <el-tooltip :content="t('ai.generateTip')" placement="top" :show-after="300">
       <el-button :disabled="disabled" :icon="MagicStick" @click="emit('generate')">
         {{ t('ai.generate') }}
       </el-button>
     </el-tooltip>
-    <el-tooltip content="挑出读起来「像 AI 写」的段落,给出改写方向,可一键定位编辑器" placement="top" :show-after="300">
+    <el-tooltip :content="t('ai.styleCheckTip')" placement="top" :show-after="300">
       <el-button :disabled="disabled" :icon="View" @click="emit('styleCheck')">
-        AI 文风检查
+        {{ t('ai.styleCheck') }}
       </el-button>
     </el-tooltip>
-    <el-tooltip content="文笔 / 情节 / 人物 / 综合 4 维 AI 评分,留历史曲线" placement="top" :show-after="300">
+    <el-tooltip :content="t('ai.scoreTip')" placement="top" :show-after="300">
       <el-button :disabled="disabled" :icon="StarFilled" @click="emit('score')">
-        AI 评分
+        {{ t('ai.score') }}
       </el-button>
     </el-tooltip>
-    <el-tooltip content="一次让 AI 草拟连续 N 章大纲,可预览再确认追加到工程末尾" placement="top" :show-after="300">
+    <el-tooltip :content="t('ai.batchOutlineTip')" placement="top" :show-after="300">
       <el-button :disabled="disabled" :icon="Notebook" @click="emit('batchOutline')">
-        AI 生成大纲
+        {{ t('ai.batchOutline') }}
       </el-button>
     </el-tooltip>
-    <el-tooltip content="列 3-5 个本章节拍(开头/转折/结尾),AI 生成时按拍推进,写后还会逐拍对账" placement="top" :show-after="300">
+    <el-tooltip :content="t('ai.beatsTip')" placement="top" :show-after="300">
       <el-button :icon="Tickets" @click="emit('beats')">
-        节拍
+        {{ t('ai.beats') }}
       </el-button>
     </el-tooltip>
-    <el-tooltip content="选起点 + 章数,后台连续生成,每章自动索引/对账/评分,质量不达标按模式重试或停下" placement="top" :show-after="300">
+    <el-tooltip :content="t('ai.autoWriteTip')" placement="top" :show-after="300">
       <el-button :disabled="disabled" :icon="VideoPlay" @click="emit('autoWrite')">
-        自动连写
+        {{ t('ai.autoWrite') }}
       </el-button>
     </el-tooltip>
-    <el-tooltip content="从光标处往下续写,自动带上前文上下文" placement="top" :show-after="300">
+    <el-tooltip :content="t('ai.continueWritingTip')" placement="top" :show-after="300">
       <el-button :disabled="disabled" :icon="EditPen" @click="emit('continue')">
         {{ t('ai.continueWriting') }}
       </el-button>
     </el-tooltip>
-    <el-tooltip content="改写当前选中的段落(先在编辑器里选中文字)" placement="top" :show-after="300">
+    <el-tooltip :content="t('ai.rewriteTip')" placement="top" :show-after="300">
       <el-button :disabled="disabled" :icon="Edit" @click="emit('rewrite')">
         {{ t('ai.rewrite') }}
       </el-button>
     </el-tooltip>
-    <el-tooltip content="让 AI 为本章生成简短大纲,写回章节大纲字段" placement="top" :show-after="300">
+    <el-tooltip :content="t('ai.summarizeTip')" placement="top" :show-after="300">
       <el-button :disabled="disabled" :icon="Document" @click="emit('summarize')">
         {{ t('ai.summarize') }}
       </el-button>
     </el-tooltip>
-    <el-tooltip content="从本章正文抽取人物 / 世界观 / 物品 / 关系 / 情节,落到知识库" placement="top" :show-after="300">
+    <el-tooltip :content="t('ai.indexChapterTip')" placement="top" :show-after="300">
       <el-button
         :disabled="disabled"
         :loading="indexing"
@@ -76,19 +76,19 @@ const disabled = computed(() => !info.configured)
         {{ t('ai.indexChapter') }}
       </el-button>
     </el-tooltip>
-    <el-tooltip content="把章节正文与大纲(大纲文本 + 节拍)对账,逐项 covered / partial / missing" placement="top" :show-after="300">
+    <el-tooltip :content="t('ai.outlineAlignTip')" placement="top" :show-after="300">
       <el-button :disabled="disabled" :icon="Aim" @click="emit('outlineAlign')">
         {{ t('outlineAlign.button') }}
       </el-button>
     </el-tooltip>
-    <el-tooltip content="按术语表把本章翻译到目标语言,译文存为版本,不动中文正文" placement="top" :show-after="300">
+    <el-tooltip :content="t('ai.translateTip')" placement="top" :show-after="300">
       <el-button :disabled="disabled" :icon="Promotion" @click="emit('translate')">
         {{ t('translate.button') }}
       </el-button>
     </el-tooltip>
-    <el-tooltip content="打开 AI 助手对话:基于当前工程 / 章节 / 选区多轮交流,可一键插入到编辑器" placement="top" :show-after="300">
+    <el-tooltip :content="t('ai.assistantTip')" placement="top" :show-after="300">
       <el-button :disabled="disabled" :icon="ChatLineRound" @click="emit('assistant')">
-        AI 助手
+        {{ t('ai.assistant') }}
       </el-button>
     </el-tooltip>
   </div>

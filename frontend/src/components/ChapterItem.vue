@@ -133,8 +133,8 @@ function onCommand(cmd) {
           :style="{ background: styleColor }"
           :title="
             styleCount === 0
-              ? 'AI 文风检查:无明显 AI 味段落'
-              : `AI 文风检查:发现 ${styleCount} 处需重写`
+              ? t('chapterItem.styleOk')
+              : t('chapterItem.styleIssues', { n: styleCount })
           "
         >
           <span v-if="styleCount === 0">✓</span>
@@ -144,7 +144,7 @@ function onCommand(cmd) {
           v-if="score != null"
           class="score-badge"
           :style="{ background: scoreColor }"
-          :title="`AI 综合评分:${score}/10`"
+          :title="t('chapterItem.scoreLabel', { n: score })"
         >
           {{ score }}
         </span>

@@ -172,9 +172,9 @@ async function onDelete(ev) {
 
 function chapterLabel(cid) {
   const c = chapterById.value[cid]
-  if (!c) return `章节 #${cid}`
+  if (!c) return `#${cid}`
   const sub = (c.title || '').trim()
-  return sub ? `第 ${c.order_index} 章 ${sub}` : `第 ${c.order_index} 章`
+  return sub ? t('formats.chapterOrderWithTitle', { n: c.order_index, title: sub }) : t('formats.chapterOrder', { n: c.order_index })
 }
 
 function kindLabel(kind) {
@@ -191,7 +191,7 @@ function eventBrief(ev) {
       const tier =
         typeof idx === 'number' && ladderTiers.value[idx]
           ? ladderTiers.value[idx]
-          : `第 ${idx + 1} 阶`
+          : t('formats.tierIndex', { n: idx + 1 })
       return `${kindLabel(ev.kind)} → ${tier}`
     }
     case 'location_change': {
@@ -309,7 +309,7 @@ const snapshotDisplay = computed(() => {
               v-for="c in chapters"
               :key="c.id"
               :value="c.id"
-              :label="(c.title || '').trim() ? `第 ${c.order_index} 章 ${c.title}` : `第 ${c.order_index} 章`"
+              :label="(c.title || '').trim() ? t('formats.chapterOrderWithTitle', { n: c.order_index, title: c.title }) : t('formats.chapterOrder', { n: c.order_index })"
             />
           </el-select>
         </el-form-item>

@@ -158,7 +158,7 @@ function priorityLabel(p) {
 function chapterLabel(cid) {
   if (!cid) return ''
   const c = chapterById.value[cid]
-  return c ? `第 ${c.order_index} 章` : `#${cid}`
+  return c ? t('formats.chapterOrder', { n: c.order_index }) : `#${cid}`
 }
 
 function assigneeNames(ids) {
@@ -318,7 +318,7 @@ function assigneeNames(ids) {
                 v-for="c in workspace.chapters"
                 :key="c.id"
                 :value="c.id"
-                :label="(c.title || '').trim() ? `第 ${c.order_index} 章 ${c.title}` : `第 ${c.order_index} 章`"
+                :label="(c.title || '').trim() ? t('formats.chapterOrderWithTitle', { n: c.order_index, title: c.title }) : t('formats.chapterOrder', { n: c.order_index })"
               />
             </el-select>
           </el-form-item>
@@ -334,7 +334,7 @@ function assigneeNames(ids) {
                 v-for="c in workspace.chapters"
                 :key="c.id"
                 :value="c.id"
-                :label="(c.title || '').trim() ? `第 ${c.order_index} 章 ${c.title}` : `第 ${c.order_index} 章`"
+                :label="(c.title || '').trim() ? t('formats.chapterOrderWithTitle', { n: c.order_index, title: c.title }) : t('formats.chapterOrder', { n: c.order_index })"
               />
             </el-select>
           </el-form-item>

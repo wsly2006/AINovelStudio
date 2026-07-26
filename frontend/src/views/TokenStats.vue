@@ -1,10 +1,12 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft, Refresh } from '@element-plus/icons-vue'
 import { statsApi } from '../api/stats'
 
+const { t } = useI18n()
 const router = useRouter()
 const today = new Date().toISOString().slice(0, 10)
 const date = ref(today)
@@ -16,7 +18,7 @@ async function load() {
   try {
     data.value = await statsApi.tokens(date.value)
   } catch (e) {
-    ElMessage.error(e.message || '加载失败')
+    ElMessage.error(e.message || t('tokenStats.loadFailed'))
   } finally {
     loading.value = false
   }
@@ -60,8 +62,8 @@ const hourMax = computed(() => Math.max(1, ...byHour.value.map((b) => b.total_to
 <template>
   <div class="token-stats" v-loading="loading">
     <header class="topbar">
-      <el-button text :icon="ArrowLeft" @click="router.push('/')">返回首页</el-button>
-      <h1 class="title">Token 用量统计</h1>
+      <el-button text :icon="ArrowLeft" @click="router.push('/')">{{ t('tokenStats.backHome') }}</el-button>
+      <h1 class="title">{{ t('tokenStats.pageTitle') }}</h1>
       <span class="spacer" />
       <el-date-picker
         v-model="date"
@@ -70,41 +72,41 @@ const hourMax = computed(() => Math.max(1, ...byHour.value.map((b) => b.total_to
         :clearable="false"
         :disabled-date="(d) => d > new Date()"
       />
-      <el-button :icon="Refresh" @click="load">刷新</el-button>
+      <el-button :icon="Refresh" @click="load">{{ t('common.refresh') }}</el-button>
     </header>
 
     <main class="content">
       <section class="cards">
         <div class="card">
-          <div class="card-label">调用次数</div>
+          <div class="card-label">{{ t('tokenStats.cardCalls') }}</div>
           <div class="card-value">{{ fmt(summary?.call_count) }}</div>
-          <div class="card-foot">失败 {{ fmt(summary?.error_count) }}</div>
+          <div class="card-foot">{{ t('tokenStats.cardErrors', { n: fmt(summary?.error_count) }) }}</div>
         </div>
         <div class="card">
-          <div class="card-label">总 tokens</div>
+          <div class="card-label">{{ t('tokenStats.cardTotal') }}</div>
           <div class="card-value">{{ fmt(summary?.total_tokens) }}</div>
           <div class="card-foot">
-            输入 {{ fmt(summary?.prompt_tokens) }} / 输出 {{ fmt(summary?.completion_tokens) }}
+            {{ t('tokenStats.cardTotalSub', { prompt: fmt(summary?.prompt_tokens), completion: fmt(summary?.completion_tokens) }) }}
           </div>
         </div>
         <div class="card">
-          <div class="card-label">输入 tokens</div>
+          <div class="card-label">{{ t('tokenStats.cardPrompt') }}</div>
           <div class="card-value">{{ fmt(summary?.prompt_tokens) }}</div>
         </div>
         <div class="card">
-          <div class="card-label">输出 tokens</div>
+          <div class="card-label">{{ t('tokenStats.cardCompletion') }}</div>
           <div class="card-value">{{ fmt(summary?.completion_tokens) }}</div>
         </div>
         <div class="card">
-          <div class="card-label">平均响应</div>
+          <div class="card-label">{{ t('tokenStats.cardAvg') }}</div>
           <div class="card-value">{{ fmtMs(summary?.avg_duration_ms) }}</div>
         </div>
       </section>
 
       <section class="grid-3">
         <div class="panel">
-          <div class="panel-title">按场景</div>
-          <div v-if="!byScene.length" class="empty">无数据</div>
+          <div class="panel-title">{{ t('tokenStats.panelByScene') }}</div>
+          <div v-if="!byScene.length" class="empty">{{ t('tokenStats.empty') }}</div>
           <ul v-else class="bar-list">
             <li v-for="b in byScene" :key="b.key">
               <div class="bar-row">
@@ -115,15 +117,15 @@ const hourMax = computed(() => Math.max(1, ...byHour.value.map((b) => b.total_to
                 <div class="bar-fill" :style="{ width: pct(b.total_tokens, sceneMax) + '%' }" />
               </div>
               <div class="bar-sub">
-                {{ b.call_count }} 次 · 入 {{ fmt(b.prompt_tokens) }} / 出 {{ fmt(b.completion_tokens) }}
+                {{ t('tokenStats.barCallsDetail', { n: b.call_count, prompt: fmt(b.prompt_tokens), completion: fmt(b.completion_tokens) }) }}
               </div>
             </li>
           </ul>
         </div>
 
         <div class="panel">
-          <div class="panel-title">按模型</div>
-          <div v-if="!byModel.length" class="empty">无数据</div>
+          <div class="panel-title">{{ t('tokenStats.panelByModel') }}</div>
+          <div v-if="!byModel.length" class="empty">{{ t('tokenStats.empty') }}</div>
           <ul v-else class="bar-list">
             <li v-for="b in byModel" :key="b.key">
               <div class="bar-row">
@@ -133,14 +135,14 @@ const hourMax = computed(() => Math.max(1, ...byHour.value.map((b) => b.total_to
               <div class="bar">
                 <div class="bar-fill model" :style="{ width: pct(b.total_tokens, modelMax) + '%' }" />
               </div>
-              <div class="bar-sub">{{ b.call_count }} 次</div>
+              <div class="bar-sub">{{ t('tokenStats.barCalls', { n: b.call_count }) }}</div>
             </li>
           </ul>
         </div>
 
         <div class="panel">
-          <div class="panel-title">按小时</div>
-          <div v-if="!byHour.length" class="empty">无数据</div>
+          <div class="panel-title">{{ t('tokenStats.panelByHour') }}</div>
+          <div v-if="!byHour.length" class="empty">{{ t('tokenStats.empty') }}</div>
           <ul v-else class="bar-list">
             <li v-for="b in byHour" :key="b.key">
               <div class="bar-row">
@@ -150,42 +152,42 @@ const hourMax = computed(() => Math.max(1, ...byHour.value.map((b) => b.total_to
               <div class="bar">
                 <div class="bar-fill hour" :style="{ width: pct(b.total_tokens, hourMax) + '%' }" />
               </div>
-              <div class="bar-sub">{{ b.call_count }} 次</div>
+              <div class="bar-sub">{{ t('tokenStats.barCalls', { n: b.call_count }) }}</div>
             </li>
           </ul>
         </div>
       </section>
 
       <section class="panel">
-        <div class="panel-title">最近调用 (最多 50 条)</div>
+        <div class="panel-title">{{ t('tokenStats.panelRecent') }}</div>
         <el-table :data="recent" size="small" stripe>
-          <el-table-column label="时间" width="100">
+          <el-table-column :label="t('tokenStats.colTime')" width="100">
             <template #default="{ row }">{{ fmtTime(row.created_at) }}</template>
           </el-table-column>
-          <el-table-column prop="scene" label="场景" width="170" />
-          <el-table-column prop="model" label="模型" min-width="180" show-overflow-tooltip />
-          <el-table-column label="流式" width="60">
-            <template #default="{ row }">{{ row.stream ? '是' : '否' }}</template>
+          <el-table-column prop="scene" :label="t('tokenStats.colScene')" width="170" />
+          <el-table-column prop="model" :label="t('tokenStats.colModel')" min-width="180" show-overflow-tooltip />
+          <el-table-column :label="t('tokenStats.colStream')" width="60">
+            <template #default="{ row }">{{ row.stream ? t('common.yes') : t('common.no') }}</template>
           </el-table-column>
-          <el-table-column label="入" width="90">
+          <el-table-column :label="t('tokenStats.colPrompt')" width="90">
             <template #default="{ row }">{{ fmt(row.prompt_tokens) }}</template>
           </el-table-column>
-          <el-table-column label="出" width="90">
+          <el-table-column :label="t('tokenStats.colCompletion')" width="90">
             <template #default="{ row }">{{ fmt(row.completion_tokens) }}</template>
           </el-table-column>
-          <el-table-column label="合计" width="100">
+          <el-table-column :label="t('tokenStats.colTotal')" width="100">
             <template #default="{ row }">{{ fmt(row.total_tokens) }}</template>
           </el-table-column>
-          <el-table-column label="耗时" width="90">
+          <el-table-column :label="t('tokenStats.colDuration')" width="90">
             <template #default="{ row }">{{ fmtMs(row.duration_ms) }}</template>
           </el-table-column>
-          <el-table-column label="状态" width="100">
+          <el-table-column :label="t('tokenStats.colStatus')" width="100">
             <template #default="{ row }">
-              <el-tag v-if="row.status === 'ok'" type="success" size="small">成功</el-tag>
-              <el-tag v-else type="danger" size="small">失败</el-tag>
+              <el-tag v-if="row.status === 'ok'" type="success" size="small">{{ t('tokenStats.statusOk') }}</el-tag>
+              <el-tag v-else type="danger" size="small">{{ t('tokenStats.statusFail') }}</el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="错误" min-width="200" show-overflow-tooltip>
+          <el-table-column :label="t('tokenStats.colError')" min-width="200" show-overflow-tooltip>
             <template #default="{ row }">{{ row.error || '' }}</template>
           </el-table-column>
         </el-table>

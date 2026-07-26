@@ -331,7 +331,7 @@ function onReplaceSelection() {
             <el-checkbox v-model="autoStyleCheck">AI 文风检查</el-checkbox>
             <el-checkbox v-model="autoScore">AI 评分</el-checkbox>
           </div>
-          <div class="hint">勾选后,采纳生成结果并写回正文后会自动打开对应面板并开始检查/评分</div>
+          <div class="hint">{{ t('generate.autoCheckHint') }}</div>
         </el-form-item>
       </template>
 
@@ -503,7 +503,7 @@ function onReplaceSelection() {
         <pre class="preview-body">{{ m.content }}</pre>
       </div>
       <template #footer>
-        <el-button @click="previewVisible = false">关闭</el-button>
+        <el-button @click="previewVisible = false">{{ t('generate.close') }}</el-button>
       </template>
     </el-dialog>
 
@@ -527,7 +527,7 @@ function onReplaceSelection() {
       </div>
       <div class="result-body">
         <pre v-if="result">{{ result }}</pre>
-        <div v-else class="result-empty">点击上方「{{ t('ai.start') }}」开始生成。</div>
+        <div v-else class="result-empty">{{ t('generate.initHint', { btn: t('ai.start') }) }}</div>
       </div>
     </div>
 

@@ -165,14 +165,14 @@ function onSettings(cmd) {
 
       <el-dropdown trigger="click" @command="onSettings">
         <el-button :icon="Tools">
-          系统设置<el-icon class="el-icon--right"><ArrowDown /></el-icon>
+          {{ t('workspace.settingsMenu') }}<el-icon class="el-icon--right"><ArrowDown /></el-icon>
         </el-button>
         <template #dropdown>
           <el-dropdown-menu>
-            <el-dropdown-item command="ai" :icon="Setting">模型设置</el-dropdown-item>
-            <el-dropdown-item command="prompts" :icon="ChatLineRound">提示词管理</el-dropdown-item>
-            <el-dropdown-item command="voice" :icon="Microphone">作者声音</el-dropdown-item>
-            <el-dropdown-item command="stats" :icon="DataLine" divided>用量统计</el-dropdown-item>
+            <el-dropdown-item command="ai" :icon="Setting">{{ t('workspace.settingsAI') }}</el-dropdown-item>
+            <el-dropdown-item command="prompts" :icon="ChatLineRound">{{ t('workspace.settingsPrompts') }}</el-dropdown-item>
+            <el-dropdown-item command="voice" :icon="Microphone">{{ t('workspace.settingsVoice') }}</el-dropdown-item>
+            <el-dropdown-item command="stats" :icon="DataLine" divided>{{ t('workspace.settingsStats') }}</el-dropdown-item>
           </el-dropdown-menu>
         </template>
       </el-dropdown>

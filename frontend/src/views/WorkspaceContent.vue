@@ -769,7 +769,7 @@ async function autoIndexAfterAI() {
 
       <div class="split-body">
         <aside class="outline-pane">
-          <div class="pane-title">本章标题</div>
+          <div class="pane-title">{{ t('outline.fieldTitle') }}</div>
           <el-input
             v-model="outlineTitleDraft"
             :placeholder="t('chapterDialog.titlePlaceholder')"
@@ -777,7 +777,7 @@ async function autoIndexAfterAI() {
             class="outline-title-input"
             @blur="flushOutlineMeta"
           />
-          <label class="field-label">本章大纲</label>
+          <label class="field-label">{{ t('outline.fieldSummary') }}</label>
           <el-input
             v-model="outlineSummaryDraft"
             type="textarea"
@@ -788,7 +788,7 @@ async function autoIndexAfterAI() {
             class="outline-summary"
             @blur="flushOutlineMeta"
           />
-          <label class="field-label">本章节拍</label>
+          <label class="field-label">{{ t('outline.fieldBeats') }}</label>
           <div class="outline-beats-wrap">
             <ChapterBeatsEditor
               :model-value="outlineBeats"

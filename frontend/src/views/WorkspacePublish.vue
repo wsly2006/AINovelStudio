@@ -71,7 +71,7 @@ async function loadPlatforms() {
   try {
     platforms.value = await platformsApi.list()
   } catch (e) {
-    ElMessage.error(e.message || '加载平台列表失败')
+    ElMessage.error(e.message || t('publish.loadPlatformsFailed'))
   } finally {
     loadingPlatforms.value = false
   }
@@ -159,9 +159,9 @@ async function onSave() {
     }
     const updated = await projectsApi.update(store.project.id, payload)
     store.project = { ...store.project, ...updated }
-    ElMessage.success('已保存')
+    ElMessage.success(t('publish.saved'))
   } catch (e) {
-    ElMessage.error(e.message || '保存失败')
+    ElMessage.error(e.message || t('common.failed'))
   } finally {
     submitting.value = false
   }
@@ -171,30 +171,30 @@ async function onSave() {
 <template>
   <div class="publish-page">
     <div class="header">
-      <h2>发布信息</h2>
-      <div class="hint">面向各平台上架的元数据。导出弹窗按这里的字段做缺项校验。</div>
+      <h2>{{ t('publish.pageTitle') }}</h2>
+      <div class="hint">{{ t('publish.pageHint') }}</div>
     </div>
 
     <div class="form-grid">
       <!-- 笔名 -->
       <section class="card">
-        <div class="card-title">笔名 / 系列</div>
+        <div class="card-title">{{ t('publish.cardPenName') }}</div>
         <el-form label-width="100px" label-position="left">
-          <el-form-item label="笔名">
+          <el-form-item :label="t('publish.penNameLabel')">
             <el-input
               v-model="form.pen_name"
-              placeholder="例如:墨白 / Alex Wang"
+              :placeholder="t('publish.penNamePlaceholder')"
               maxlength="80"
             />
           </el-form-item>
-          <el-form-item label="系列名">
+          <el-form-item :label="t('publish.seriesNameLabel')">
             <el-input
               v-model="form.series_name"
-              placeholder="多本同系列时填,如「修仙问道录」"
+              :placeholder="t('publish.seriesNamePlaceholder')"
               maxlength="120"
             />
           </el-form-item>
-          <el-form-item label="第几本">
+          <el-form-item :label="t('publish.seriesIndexLabel')">
             <el-input-number
               v-model="form.series_index"
               :min="1"
@@ -209,9 +209,9 @@ async function onSave() {
       <!-- 长简介 -->
       <section class="card">
         <div class="card-title">
-          长简介 / Blurb
+          {{ t('publish.cardBlurb') }}
           <span v-if="blurbLimit" class="title-hint">
-            按所选平台限制 ≤ {{ blurbLimit }} 字符
+            {{ t('publish.blurbLimitHint', { limit: blurbLimit }) }}
           </span>
         </div>
         <el-input
@@ -220,7 +220,7 @@ async function onSave() {
           :rows="8"
           :maxlength="blurbLimit || undefined"
           show-word-limit
-          placeholder="发布到 Amazon / Webnovel 商品页的长简介,与首页短简介不同"
+          :placeholder="t('publish.blurbPlaceholder')"
           resize="vertical"
         />
       </section>
@@ -228,12 +228,12 @@ async function onSave() {
       <!-- 关键词 -->
       <section class="card">
         <div class="card-title">
-          关键词
+          {{ t('publish.cardKeywords') }}
           <span class="title-hint">
             <template v-if="keywordsLimit"
-              >上限 {{ keywordsLimit }} 个 (当前 {{ form.keywords.length }})</template
+              >{{ t('publish.keywordsLimitHint', { limit: keywordsLimit, count: form.keywords.length }) }}</template
             >
-            <template v-else>当前 {{ form.keywords.length }} 个</template>
+            <template v-else>{{ t('publish.keywordsCountHint', { count: form.keywords.length }) }}</template>
           </span>
         </div>
         <div class="chips">
@@ -247,7 +247,7 @@ async function onSave() {
           </el-tag>
           <el-input
             v-model="keywordInput"
-            placeholder="回车添加"
+            :placeholder="t('publish.keywordsPlaceholder')"
             class="chip-input"
             size="small"
             @keyup.enter="addKeyword"
@@ -257,19 +257,19 @@ async function onSave() {
           v-if="keywordsLimit && form.keywords.length > keywordsLimit"
           class="warn"
         >
-          超过所选平台关键词上限 {{ keywordsLimit }} 个
+          {{ t('publish.keywordsExceeded', { limit: keywordsLimit }) }}
         </div>
       </section>
 
       <!-- 分类 -->
       <section class="card">
         <div class="card-title">
-          分类
+          {{ t('publish.cardCategories') }}
           <span class="title-hint">
             <template v-if="categoriesLimit"
-              >上限 {{ categoriesLimit }} 个 (当前 {{ form.categories.length }})</template
+              >{{ t('publish.categoriesLimitHint', { limit: categoriesLimit, count: form.categories.length }) }}</template
             >
-            <template v-else>当前 {{ form.categories.length }} 个</template>
+            <template v-else>{{ t('publish.categoriesCountHint', { count: form.categories.length }) }}</template>
           </span>
         </div>
         <div class="chips">
@@ -284,7 +284,7 @@ async function onSave() {
           </el-tag>
           <el-input
             v-model="categoryInput"
-            placeholder="回车添加,例如:Fantasy / Action"
+            :placeholder="t('publish.categoriesPlaceholder')"
             class="chip-input"
             size="small"
             @keyup.enter="addCategory"
@@ -294,18 +294,18 @@ async function onSave() {
           v-if="categoriesLimit && form.categories.length > categoriesLimit"
           class="warn"
         >
-          超过所选平台分类上限 {{ categoriesLimit }} 个
+          {{ t('publish.categoriesExceeded', { limit: categoriesLimit }) }}
         </div>
       </section>
 
       <!-- 目标平台 -->
       <section class="card span-2" v-loading="loadingPlatforms">
-        <div class="card-title">目标平台</div>
+        <div class="card-title">{{ t('publish.cardPlatforms') }}</div>
         <div class="platform-hint">
-          勾选这本书计划上的平台。导出弹窗会按勾选项做缺项校验。
+          {{ t('publish.platformsHint') }}
         </div>
         <div class="platform-group" v-if="groupedPlatforms.global.length">
-          <div class="group-title">海外</div>
+          <div class="group-title">{{ t('publish.groupGlobal') }}</div>
           <div class="platform-grid">
             <button
               v-for="p in groupedPlatforms.global"
@@ -323,7 +323,7 @@ async function onSave() {
           </div>
         </div>
         <div class="platform-group" v-if="groupedPlatforms.cn.length">
-          <div class="group-title">国内</div>
+          <div class="group-title">{{ t('publish.groupCN') }}</div>
           <div class="platform-grid">
             <button
               v-for="p in groupedPlatforms.cn"
@@ -341,7 +341,7 @@ async function onSave() {
           </div>
         </div>
         <div class="platform-group" v-if="groupedPlatforms.other.length">
-          <div class="group-title">通用</div>
+          <div class="group-title">{{ t('publish.groupOther') }}</div>
           <div class="platform-grid">
             <button
               v-for="p in groupedPlatforms.other"
@@ -363,7 +363,7 @@ async function onSave() {
 
     <div class="footer">
       <el-button type="primary" :loading="submitting" @click="onSave">
-        保存
+        {{ t('common.save') }}
       </el-button>
     </div>
   </div>

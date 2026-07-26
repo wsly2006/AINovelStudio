@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Delete, MagicStick, Refresh, Aim } from '@element-plus/icons-vue'
 import { chapterStyleChecksApi } from '../api/chapterStyleChecks'
@@ -12,6 +13,8 @@ const props = defineProps({
   autoStart: { type: Boolean, default: false },
 })
 const emit = defineEmits(['update:modelValue', 'changed', 'jumpRewrite', 'auto-started'])
+
+const { t } = useI18n()
 
 const loading = ref(false)
 const checking = ref(false)
@@ -184,8 +187,8 @@ function onJumpRewrite(issue) {
     <div v-loading="loading">
       <div v-if="!selected && !loading && !checking" class="empty">
         <div class="empty-emoji">🪞</div>
-        <p>还没有检查记录。点上方「开始检查」让 AI 挑出读起来「像 AI 写」的段落。</p>
-        <p class="empty-hint">每条命中包含原文片段、问题原因与重写方向,点「去改写」直接定位到编辑器。</p>
+        <p>{{ t('styleCheck.empty') }}</p>
+        <p class="empty-hint">{{ t('styleCheck.emptyHint') }}</p>
       </div>
 
       <template v-if="selected">
@@ -194,7 +197,7 @@ function onJumpRewrite(issue) {
           <span class="model-tag">{{ fmtDate(selected.created_at) }}</span>
           <span class="model-tag">{{ selected.word_count }} 字</span>
           <span class="model-tag count-pill" :class="{ clean: selected.issues.length === 0 }">
-            {{ selected.issues.length === 0 ? '无明显 AI 味' : `${selected.issues.length} 处需重写` }}
+            {{ selected.issues.length === 0 ? t('styleCheck.cleanPill') : t('styleCheck.rewritePill', { n: selected.issues.length }) }}
           </span>
         </div>
 
@@ -203,12 +206,12 @@ function onJumpRewrite(issue) {
         <!-- 客观风格信号(本地统计,不依赖 LLM)。默认折叠,作为知情参考 -->
         <details v-if="hasSignals" class="signals-panel">
           <summary class="signals-summary">
-            <span class="signals-title">客观风格信号</span>
-            <span class="signals-hint">本地统计,作者知情参考</span>
+            <span class="signals-title">{{ t('styleCheck.signalTitle') }}</span>
+            <span class="signals-hint">{{ t('styleCheck.signalHint') }}</span>
           </summary>
           <div class="signals-grid">
             <div class="sig-cell">
-              <div class="sig-label">句长方差</div>
+              <div class="sig-label">{{ t('styleCheck.sigSentenceVar') }}</div>
               <div class="sig-value">{{ signals.sentence?.stdev_len ?? '—' }}</div>
               <div class="sig-meta">
                 均 {{ signals.sentence?.mean_len ?? '—' }} · p10/50/90
@@ -216,7 +219,7 @@ function onJumpRewrite(issue) {
               </div>
             </div>
             <div class="sig-cell">
-              <div class="sig-label">段长方差</div>
+              <div class="sig-label">{{ t('styleCheck.sigParagraphVar') }}</div>
               <div class="sig-value">{{ signals.paragraph?.stdev_len ?? '—' }}</div>
               <div class="sig-meta">
                 {{ signals.paragraph?.count ?? 0 }} 段 · 均
@@ -224,22 +227,22 @@ function onJumpRewrite(issue) {
               </div>
             </div>
             <div class="sig-cell">
-              <div class="sig-label">词汇丰富度</div>
+              <div class="sig-label">{{ t('styleCheck.sigVocabRichness') }}</div>
               <div class="sig-value">{{ fmtRatio(signals.vocab_richness) }}</div>
-              <div class="sig-meta">去重字符 / 非空白字符</div>
+              <div class="sig-meta">{{ t('styleCheck.sigVocabMeta') }}</div>
             </div>
             <div class="sig-cell">
-              <div class="sig-label">对白占比</div>
+              <div class="sig-label">{{ t('styleCheck.sigDialogRatio') }}</div>
               <div class="sig-value">{{ fmtRatio(signals.dialogue_ratio) }}</div>
-              <div class="sig-meta">引号开头段 / 总段数</div>
+              <div class="sig-meta">{{ t('styleCheck.sigDialogMeta') }}</div>
             </div>
             <div class="sig-cell">
-              <div class="sig-label">标点密度</div>
+              <div class="sig-label">{{ t('styleCheck.sigPunctDensity') }}</div>
               <div class="sig-value">{{ fmtRatio(signals.punctuation_ratio) }}</div>
-              <div class="sig-meta">标点字符 / 总字符</div>
+              <div class="sig-meta">{{ t('styleCheck.sigPunctMeta') }}</div>
             </div>
             <div class="sig-cell">
-              <div class="sig-label">总字符</div>
+              <div class="sig-label">{{ t('styleCheck.sigTotalChars') }}</div>
               <div class="sig-value">{{ signals.char_count ?? 0 }}</div>
               <div class="sig-meta">{{ signals.sentence?.count ?? 0 }} 句</div>
             </div>
@@ -270,11 +273,11 @@ function onJumpRewrite(issue) {
             <div class="kind-tag" :style="{ background: kindColor(activeIssue.kind) }">
               {{ activeIssue.kind }}
             </div>
-            <div class="section-label">原文片段</div>
+            <div class="section-label">{{ t('styleCheck.excerptLabel') }}</div>
             <p class="quote-text">{{ activeIssue.quote }}</p>
-            <div class="section-label">为什么像 AI</div>
+            <div class="section-label">{{ t('styleCheck.aiReasonLabel') }}</div>
             <p class="reason-text">{{ activeIssue.why || '(未给出)' }}</p>
-            <div class="section-label">重写方向</div>
+            <div class="section-label">{{ t('styleCheck.rewriteDirLabel') }}</div>
             <p class="reason-text">{{ activeIssue.suggestion || '(未给出)' }}</p>
             <div class="actions">
               <el-button type="primary" :icon="Aim" @click="onJumpRewrite(activeIssue)">
@@ -286,7 +289,7 @@ function onJumpRewrite(issue) {
 
         <!-- 历史 -->
         <div class="history" v-if="items.length >= 1">
-          <div class="section-label hist-title">历史检查 ({{ items.length }} 次)</div>
+          <div class="section-label hist-title">{{ t('styleCheck.historyLabel', { n: items.length }) }}</div>
           <div class="hist-list">
             <div
               v-for="s in items"
@@ -313,7 +316,7 @@ function onJumpRewrite(issue) {
     </div>
 
     <template #footer>
-      <el-button @click="close">关闭</el-button>
+      <el-button @click="close">{{ t('styleCheck.close') }}</el-button>
     </template>
   </el-dialog>
 </template>

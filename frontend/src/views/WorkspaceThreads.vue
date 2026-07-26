@@ -77,7 +77,7 @@ onMounted(load)
 async function onCreate() {
   try {
     const created = await plotThreadsApi.create(projectId.value, {
-      title: '新主线',
+      title: t('threads.defaultTitle'),
       description: '',
       planned_arc: '',
       status: 'planning',
@@ -285,9 +285,9 @@ async function onSuggest() {
 
         <!-- 相关事件:这条线在哪几章发生过什么。来自 plot_events.thread_id 反查 -->
         <div class="form-row events-block" v-loading="eventsLoading">
-          <label>相关事件 ({{ relatedEvents.length }})</label>
+          <label>{{ t('threads.relatedEventsLabel', { n: relatedEvents.length }) }}</label>
           <div v-if="!eventsLoading && relatedEvents.length === 0" class="events-empty">
-            还没有事件挂在这条线上。索引章节后,AI 会自动把推动这条线的事件绑过来。
+            {{ t('threads.relatedEventsEmpty') }}
           </div>
           <div v-else class="events-list">
             <div
@@ -296,7 +296,7 @@ async function onSuggest() {
               class="ev-row"
               @click="jumpToChapter(ev.chapter_id)"
             >
-              <span class="ev-chap">第 {{ ev.chapter_order_index }} 章</span>
+              <span class="ev-chap">{{ t('formats.chapterOrder', { n: ev.chapter_order_index }) }}</span>
               <span class="ev-title">{{ ev.title }}</span>
               <span v-if="ev.description" class="ev-desc">{{ ev.description }}</span>
             </div>

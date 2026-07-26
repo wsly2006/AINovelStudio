@@ -158,7 +158,7 @@ async function onExtractCompleted() {
     <main class="detail-pane">
       <div v-if="!selected && !draftMode" class="placeholder">
         <div class="emoji">👤</div>
-        <p>选择一个人物查看 / 编辑,或新建一个</p>
+        <p>{{ t('charactersExtra.placeholder') }}</p>
       </div>
       <CharacterEditor
         v-else

@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Delete, MagicStick, Refresh } from '@element-plus/icons-vue'
 import { chapterScoresApi } from '../api/chapterScores'
@@ -12,6 +13,8 @@ const props = defineProps({
   autoStart: { type: Boolean, default: false },
 })
 const emit = defineEmits(['update:modelValue', 'changed', 'auto-started'])
+
+const { t } = useI18n()
 
 const loading = ref(false)
 const scoring = ref(false)
@@ -156,27 +159,27 @@ const sparkline = computed(() => {
     <div v-loading="loading">
       <div v-if="!selected && !loading && !scoring" class="empty">
         <div class="empty-emoji">✨</div>
-        <p>还没有评分。点上方「开始评分」让 AI 给本章打分。</p>
-        <p class="empty-hint">分文笔 / 情节 / 人物 / 综合 4 项,每项 1-10。</p>
+        <p>{{ t('score.empty') }}</p>
+        <p class="empty-hint">{{ t('score.emptyHint') }}</p>
       </div>
 
       <template v-if="selected">
         <!-- 当前(最新)分数 -->
         <div class="score-grid">
           <div class="score-tile">
-            <div class="dim">文笔</div>
+            <div class="dim">{{ t('score.dimWriting') }}</div>
             <div class="num" :style="{ color: scoreColor(selected.writing) }">{{ selected.writing }}</div>
           </div>
           <div class="score-tile">
-            <div class="dim">情节</div>
+            <div class="dim">{{ t('score.dimPlot') }}</div>
             <div class="num" :style="{ color: scoreColor(selected.plot) }">{{ selected.plot }}</div>
           </div>
           <div class="score-tile">
-            <div class="dim">人物</div>
+            <div class="dim">{{ t('score.dimCharacters') }}</div>
             <div class="num" :style="{ color: scoreColor(selected.characters) }">{{ selected.characters }}</div>
           </div>
           <div class="score-tile primary">
-            <div class="dim">综合</div>
+            <div class="dim">{{ t('score.dimOverall') }}</div>
             <div class="num" :style="{ color: scoreColor(selected.overall) }">{{ selected.overall }}</div>
           </div>
         </div>
@@ -194,10 +197,10 @@ const sparkline = computed(() => {
 
         <!-- 历史 -->
         <div class="history" v-if="items.length >= 1">
-          <div class="section-label">历史评分 ({{ items.length }} 次)</div>
+          <div class="section-label">{{ t('score.historyLabel', { n: items.length }) }}</div>
 
           <div v-if="sparkline" class="trend">
-            <span class="trend-label">综合分趋势</span>
+            <span class="trend-label">{{ t('score.trendLabel') }}</span>
             <svg :viewBox="`0 0 ${sparkline.W} ${sparkline.H}`" class="trend-svg">
               <path :d="sparkline.d" stroke="#4080ff" stroke-width="1.5" fill="none" />
               <circle
@@ -221,10 +224,10 @@ const sparkline = computed(() => {
             >
               <span class="hist-time">{{ fmtDate(s.created_at) }}</span>
               <span class="hist-cells">
-                <span>文 {{ s.writing }}</span>
-                <span>情 {{ s.plot }}</span>
-                <span>人 {{ s.characters }}</span>
-                <span class="hist-overall" :style="{ color: scoreColor(s.overall) }">综 {{ s.overall }}</span>
+                <span>{{ t('score.dimWriting') }} {{ s.writing }}</span>
+                <span>{{ t('score.dimPlot') }} {{ s.plot }}</span>
+                <span>{{ t('score.dimCharacters') }} {{ s.characters }}</span>
+                <span class="hist-overall" :style="{ color: scoreColor(s.overall) }">{{ t('score.dimOverall') }} {{ s.overall }}</span>
               </span>
               <el-button
                 text
@@ -240,7 +243,7 @@ const sparkline = computed(() => {
     </div>
 
     <template #footer>
-      <el-button @click="close">关闭</el-button>
+      <el-button @click="close">{{ t('score.close') }}</el-button>
     </template>
   </el-dialog>
 </template>
