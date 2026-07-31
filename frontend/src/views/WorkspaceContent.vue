@@ -751,6 +751,7 @@ async function autoIndexAfterAI() {
         <h2 class="chap-title">{{ selectedChapterFullTitle }}</h2>
         <AIToolbar
           :indexing="indexing"
+          :chapter-has-content="(selectedChapter?.word_count || 0) > 0"
           @generate="onAIGenerate"
           @beats="onAIBeats"
           @style-check="onAIStyleCheck"

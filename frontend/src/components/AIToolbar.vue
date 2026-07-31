@@ -6,6 +6,7 @@ import { useAIInfoStore } from '../stores/aiInfo'
 
 const props = defineProps({
   indexing: { type: Boolean, default: false },
+  chapterHasContent: { type: Boolean, default: false },
 })
 const emit = defineEmits(['generate', 'continue', 'rewrite', 'summarize', 'index', 'score', 'styleCheck', 'beats', 'assistant', 'autoWrite', 'outlineAlign', 'translate', 'batchOutline'])
 
@@ -21,9 +22,9 @@ const disabled = computed(() => !info.configured)
 
 <template>
   <div class="ai-toolbar">
-    <el-tooltip :content="t('ai.generateTip')" placement="top" :show-after="300">
+    <el-tooltip :content="props.chapterHasContent ? t('ai.regenerateTip') : t('ai.generateTip')" placement="top" :show-after="300">
       <el-button :disabled="disabled" :icon="MagicStick" @click="emit('generate')">
-        {{ t('ai.generate') }}
+        {{ props.chapterHasContent ? t('ai.regenerate') : t('ai.generate') }}
       </el-button>
     </el-tooltip>
     <el-tooltip :content="t('ai.styleCheckTip')" placement="top" :show-after="300">
