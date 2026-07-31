@@ -31,6 +31,14 @@ class AIError(Exception):
     """AI 调用失败的统一错误"""
 
 
+def _is_deepseek(cfg: RuntimeAIConfig) -> bool:
+    """DeepSeek V4 默认开 thinking;reasoning 会占满 max_tokens 导致 content 为空。"""
+    if (cfg.provider or "").lower() == "deepseek":
+        return True
+    model = (cfg.model or "").lower()
+    return model.startswith("deepseek/") or model.startswith("deepseek-")
+
+
 def _build_kwargs(cfg: RuntimeAIConfig) -> dict:
     if not cfg.configured:
         raise AINotConfiguredError(
@@ -46,6 +54,9 @@ def _build_kwargs(cfg: RuntimeAIConfig) -> dict:
         kwargs["api_base"] = cfg.api_base
     if cfg.api_key:
         kwargs["api_key"] = cfg.api_key
+    # 必须走 extra_body:顶层 thinking= 会被 litellm 吃掉但仍产生 reasoning_content
+    if _is_deepseek(cfg):
+        kwargs["extra_body"] = {"thinking": {"type": "disabled"}}
     return kwargs
 
 
@@ -158,6 +169,7 @@ async def stream_chat(
     prompt_tokens = completion_tokens = total_tokens = None
     status = "ok"
     err_text: str | None = None
+    yielded_chars = 0
     try:
         response = await litellm.acompletion(**kwargs)
         async for chunk in response:
@@ -177,7 +189,16 @@ async def stream_chat(
                 continue
             text = getattr(delta, "content", None)
             if text:
+                yielded_chars += len(text)
                 yield text
+        # thinking 占满 max_tokens 时 content 为空,前端会显示「完成 / 0 字」像失效
+        if yielded_chars == 0 and (completion_tokens or 0) > 0:
+            status = "error"
+            err_text = (
+                "模型只返回了思考过程、正文为空(常见于 DeepSeek V4 thinking 占满 max_tokens)。"
+                "请关闭 thinking 或调大「最大生成长度」后重试。"
+            )
+            raise AIError(err_text)
     except asyncio.CancelledError:
         # SSE 客户端断开:starlette 把 CancelledError 投递进生成器。
         # 写一条 cancelled 日志做可观测,然后照常抛出让外层(SessionLocal)正确收尾。
@@ -193,6 +214,20 @@ async def stream_chat(
             duration_ms=int((time.monotonic() - started) * 1000),
             status="cancelled",
             error=None,
+            project_id=project_id,
+        )
+        raise
+    except AIError as e:
+        _persist_log(
+            scene=scene,
+            cfg=cfg,
+            stream=True,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            total_tokens=total_tokens,
+            duration_ms=int((time.monotonic() - started) * 1000),
+            status="error",
+            error=str(e),
             project_id=project_id,
         )
         raise
@@ -255,7 +290,17 @@ async def complete(
         response = await litellm.acompletion(**kwargs)
         usage_attr = getattr(response, "usage", None)
         prompt_tokens, completion_tokens, total_tokens = _extract_usage(usage_attr)
-        return response.choices[0].message.content or ""
+        text = response.choices[0].message.content or ""
+        if not text and (completion_tokens or 0) > 0:
+            status = "error"
+            err_text = (
+                "模型只返回了思考过程、正文为空(常见于 DeepSeek V4 thinking 占满 max_tokens)。"
+                "请关闭 thinking 或调大「最大生成长度」后重试。"
+            )
+            raise AIError(err_text)
+        return text
+    except AIError:
+        raise
     except Exception as e:
         status = "error"
         err_text = str(e)

@@ -477,7 +477,7 @@ function onReplaceSelection() {
         :disabled="!canStart"
         @click="start"
       >
-        {{ (mode === 'generate' && chapterHasContent) ? t('ai.regenerate') : t('ai.start') }}
+        {{ (mode === 'generate' && (phase !== 'idle' || chapterHasContent)) ? t('ai.regenerate') : t('ai.start') }}
       </el-button>
       <el-button v-else type="danger" @click="stop">{{ t('ai.stop') }}</el-button>
       <el-button
@@ -496,7 +496,7 @@ function onReplaceSelection() {
       append-to-body
     >
       <p class="preview-hint">
-        这是当前抽屉里所有选项组装出的 messages,跟点「{{ (mode === 'generate' && chapterHasContent) ? t('ai.regenerate') : t('ai.start') }}」时发出去的内容完全一致(不会调用 AI)。
+        这是当前抽屉里所有选项组装出的 messages,跟点「{{ (mode === 'generate' && (phase !== 'idle' || chapterHasContent)) ? t('ai.regenerate') : t('ai.start') }}」时发出去的内容完全一致(不会调用 AI)。
       </p>
       <div v-for="(m, i) in previewMessages" :key="i" class="preview-msg">
         <div class="preview-role">{{ m.role }}({{ (m.content || '').length }} 字)</div>
